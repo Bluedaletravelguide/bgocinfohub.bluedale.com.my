@@ -36,6 +36,45 @@ body.modal-open {
     overflow: hidden !important;
 }
 
+/* ===== Borderless filters ===== */
+.filter-grid .form-input,
+.filter-grid .form-select,
+.filter-grid .ts-control {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    padding-left: 0 !important; /* optional: keep text aligned */
+    padding-right: 0 !important; /* optional */
+}
+
+.filter-grid .form-input:focus,
+.filter-grid .form-select:focus,
+.filter-grid .ts-wrapper.focus .ts-control,
+.filter-grid .ts-control:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border: 0 !important;
+}
+
+/* remove hover lift/glow just for filters */
+.filter-grid .form-input:hover,
+.filter-grid .form-select:hover,
+.filter-grid .ts-control:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border: 0 !important;
+}
+
+/* date input quirks */
+.filter-grid input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
 /* ============================================
    ANIMATED BACKGROUND GRADIENT
    ============================================ */
