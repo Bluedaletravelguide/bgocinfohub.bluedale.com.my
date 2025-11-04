@@ -87,7 +87,7 @@
 </head>
 <body>
     <div class="container">
-        <h2>📋 Your Task Summary - {{ \Carbon\Carbon::now()->format('d M Y') }}</h2>
+        <h2>📋 Outstanding Task Summary - {{ \Carbon\Carbon::now()->format('d M Y') }}</h2>
 
         <p>Hello <strong>{{ $data['user']->name }}</strong>,</p>
         <p>Here are your assigned tasks:</p>

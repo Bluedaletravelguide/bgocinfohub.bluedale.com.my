@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Mail\DailyDigestMail;
 use App\Models\Item;
 use App\Models\User;
-use App\Support\Notifications\DeliveryLogger;  
+use App\Support\Notifications\DeliveryLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,7 +29,7 @@ class SendDailyDigestJob implements ShouldQueue
             'total'        => $items->count(),
             'due_today'    => $items->where('deadline', $today->toDateString())->count(),
             'due_tomorrow' => $items->where('deadline', $today->copy()->addDay()->toDateString())->count(),
-            'overdue'      => $items->where('deadline', '<', $today->toDateString())->count(),
+            'Expired'      => $items->where('deadline', '<', $today->toDateString())->count(),
         ];
 
         $topRisks = $items->where('deadline', '<', $today->toDateString())

@@ -30,9 +30,9 @@ class UserDigestMail extends Mailable
             default => '✅'
         };
 
-        $subject = "{$emoji} [BGOC] Your Tasks ({$total} total";
+        $subject = "{$emoji} [BGOC] Info Hub ({$total} total";
         if ($urgentCount > 0) {
-            $subject .= ", {$urgentCount} urgent";
+            $subject .= ", {$urgentCount} Expired";
         }
         $subject .= ")";
 
