@@ -1626,6 +1626,12 @@ table thead {
     overflow: hidden;
 }
 
+.badge-overdue {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    border-color: #fca5a5 !important;
+}
+
 .badge-animated::before {
     content: "";
     position: absolute;

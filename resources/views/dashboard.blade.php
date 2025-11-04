@@ -1132,16 +1132,13 @@ function updateTableCounter(visibleCount = 0){
 }
 
 
-
 // === PREVIEW TABLES (Before Export) =================================
 
 function getCurrentFilterParams() {
-  // Prefer the one defined later inside $(function){...}
   if (typeof window.getFilters === 'function') {
     return new URLSearchParams(window.getFilters()).toString();
   }
 
-  // Fallback: read inputs directly matching your table columns
   const filterParams = {
     date_in_from:  document.querySelector('#f_date_in_from')?.value || '',
     deadline_from: document.querySelector('#f_deadline_from')?.value || '',
@@ -1152,27 +1149,25 @@ function getCurrentFilterParams() {
     product_id:    document.querySelector('#f_product_id')?.value || '',
     task:          document.querySelector('#f_task')?.value || '',
     remarks:       document.querySelector('#f_remarks')?.value || '',
-    type_label:    document.querySelector('#f_type_label')?.value || '', // Int/Client
+    type_label:    document.querySelector('#f_type_label')?.value || '',
     status:        document.querySelector('#f_status')?.value || '',
   };
 
   return new URLSearchParams(filterParams).toString();
 }
 
-// (2) Open/Close modal helpers
 function openPreviewModal() {
   document.getElementById('previewModal')?.classList.remove('hidden');
 }
+
 function closePreviewModal() {
   document.getElementById('previewModal')?.classList.add('hidden');
 }
 
-// (3) Render helpers
 function renderSummaryChips(rows) {
   const wrap = document.getElementById('previewSummary');
   if (!wrap) return;
 
-  // simple counts by status
   const counts = rows.reduce((acc, r) => {
     const s = (r.status || '').toString();
     acc[s] = (acc[s] || 0) + 1;
@@ -1193,8 +1188,34 @@ function renderSummaryChips(rows) {
   });
 }
 
-// ===== PREVIEW TABLES WITH SECTIONS =====
-// ===== PREVIEW TABLES WITH SECTIONS =====
+// ✅ Helper functions (HARUS DI LUAR renderPreviewTable)
+function statusOptions(selected){
+  const opts = ['Pending','In Progress','Completed','Expired'];
+  return opts.map(v => `<option value="${v}" ${String(selected||'')===v?'selected':''}>${v}</option>`).join('');
+}
+
+function getStatusSelect(r){
+  const disabled = r.can_update ? '' : ' disabled';
+  return `
+    <select class="pv-status px-2 py-1 rounded-lg border hairline bg-white"
+            data-id="${r.id}"${disabled}>
+      ${statusOptions(r.status)}
+    </select>
+  `;
+}
+
+function getDeleteBtn(r){
+  if (!r.can_delete) return '<span class="text-neutral-300">-</span>';
+  return `
+    <button type="button"
+            class="pv-delete px-3 py-1 rounded-lg border hairline bg-rose-50 hover:bg-rose-100 text-rose-700"
+            data-id="${r.id}">
+      Delete
+    </button>
+  `;
+}
+
+// ✅ Render preview table with sections
 function renderPreviewTable(rows) {
   const head = document.getElementById('previewHeadRow');
   const body = document.getElementById('previewBody');
@@ -1217,7 +1238,8 @@ function renderPreviewTable(rows) {
     { key: 'task',         label: 'Task' },
     { key: 'remarks',      label: 'Remarks' },
     { key: 'type_label',   label: 'Int/Client', render: r => uiTypeLabel(r.type_label) },
-    { key: 'status',       label: 'Status' },
+    { key: 'status',       label: 'Status', render: r => getStatusSelect(r) },
+    { key: 'action',       label: 'Action',  render: r => getDeleteBtn(r) },
   ];
 
   // Head
@@ -1236,29 +1258,30 @@ function renderPreviewTable(rows) {
   }
   empty?.classList.add('hidden');
 
-  // 🔴 GROUP BY STATUS (same order as export)
-  const statusOrder = ['Expired', 'Pending', 'In Progress', 'Completed'];
+  // Group by status
+const statusOrder = ['Pending', 'In Progress', 'Completed'];
+const grouped = {};
+statusOrder.forEach(status => {
+  grouped[status] = rows.filter(r => {
+    const s = (r.status || '').trim().toLowerCase();
+    return s === status.toLowerCase();
+  }).sort((a, b) => {
+    // Sort by overdue first, then by deadline
+    const overdueA = a.is_overdue ? 0 : 1;  // ✅ CORRECT: use a
+    const overdueB = b.is_overdue ? 0 : 1;  // ✅ CORRECT: use b
+    if (overdueA !== overdueB) return overdueA - overdueB;
 
-  // Group items by status
-  const grouped = {};
-  statusOrder.forEach(status => {
-    grouped[status] = rows.filter(r => {
-      const s = (r.status || '').trim();
-      return s.toLowerCase() === status.toLowerCase();
-    }).sort((a, b) => {
-      // Sort by deadline (earliest first)
-      const dateA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
-      const dateB = b.deadline ? new Date(b.deadline).getTime() : Infinity;
-      return dateA - dateB;
-    });
+    const dateA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+    const dateB = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+    return dateA - dateB;
   });
+});
 
-  // 🔴 RENDER SECTIONS WITH PROPER CLASSES
+  // Render sections
   let html = '';
   statusOrder.forEach(status => {
     const items = grouped[status];
     if (items && items.length > 0) {
-      // Section header - USE THE CSS CLASSES
       html += `
         <tr class="section-header-row">
           <td colspan="${columns.length}" class="section-header-cell">
@@ -1267,20 +1290,23 @@ function renderPreviewTable(rows) {
         </tr>
       `;
 
-      // Items in this section
       items.forEach(r => {
         const tds = columns.map(c => {
-          let val = (typeof c.render === 'function') ? c.render(r) : r[c.key];
+          let cellClass = 'px-3 py-2 border-b hairline align-top';
+
+          if (c.key === 'deadline' && r.is_overdue) {
+    cellClass += ' text-red-deadline';
+}
+
+          if (typeof c.render === 'function') {
+            const html = c.render(r);
+            return `<td class="${cellClass}">${html}</td>`;
+          }
+
+          let val = r[c.key];
           if (c.format === 'date' && typeof window.fmt === 'function') {
             val = window.fmt(val);
           }
-
-          // Red deadline for Expired
-          let cellClass = 'px-3 py-2 border-b hairline align-top';
-          if (c.key === 'deadline' && status === 'Expired') {
-            cellClass += ' text-red-deadline';
-          }
-
           return `<td class="${cellClass}">${esc(val)}</td>`;
         }).join('');
 
@@ -1291,10 +1317,10 @@ function renderPreviewTable(rows) {
 
   body.innerHTML = html;
 }
-// (4) Fetch data from your existing list endpoint and show modal
+
+// ✅ Load and open preview
 async function loadPreviewAndOpen() {
   const params = getCurrentFilterParams();
-  // IMPORTANT: the route below exists in your app list (GET dashboard/items/list)
   const url = `{{ route('dashboard.items.list') }}?${params}`;
   const CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
 
@@ -1302,17 +1328,15 @@ async function loadPreviewAndOpen() {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const payload = await res.json();
 
-  // Normalize: some apps put data in payload.data; others return array directly
   const rows = Array.isArray(payload) ? payload : (payload.data || payload.items || []);
   renderSummaryChips(rows);
   renderPreviewTable(rows);
   openPreviewModal();
 }
 
-// (5) Wire events
+// Wire preview button
 document.getElementById('btnPreviewTables')?.addEventListener('click', async () => {
   try {
-    // Optional: show a tiny loading state (you can enhance with a spinner)
     document.getElementById('btnPreviewTables').disabled = true;
     await loadPreviewAndOpen();
   } catch (e) {
@@ -1325,7 +1349,6 @@ document.getElementById('btnPreviewTables')?.addEventListener('click', async () 
 
 document.getElementById('previewClose')?.addEventListener('click', closePreviewModal);
 document.getElementById('previewClose2')?.addEventListener('click', closePreviewModal);
-// Close when clicking backdrop
 document.getElementById('previewModal')?.addEventListener('click', (ev) => {
   if (ev.target?.id === 'previewModal') closePreviewModal();
 });
@@ -1468,6 +1491,86 @@ $(function(){
   try {
     const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+    const pvBody = document.getElementById('previewBody');
+
+    // Handle status dropdown change
+    pvBody?.addEventListener('change', async (ev) => {
+      const el = ev.target;
+      if (!el.classList.contains('pv-status')) return;
+
+      const id = el.dataset.id;
+      const newStatus = el.value;
+
+      // Show loading state
+      el.disabled = true;
+      el.style.opacity = '0.5';
+
+      try {
+        const res = await fetch(`{{ route('dashboard.items.update', ['id' => '__ID__']) }}`.replace('__ID__', id), {
+          method: 'PATCH',
+          headers: {
+            'X-CSRF-TOKEN': CSRF,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        // Refresh preview table
+        await loadPreviewAndOpen();
+
+        // Also refresh main table
+        if (typeof fetchData === 'function') {
+          await fetchData({ resetWindow: false, silent: true });
+        }
+
+        console.log(`✅ Status updated: ${id} → ${newStatus}`);
+
+      } catch (err) {
+        console.error('Status update failed:', err);
+        alert('Failed to update status: ' + err.message);
+
+        // Restore dropdown on error
+        el.disabled = false;
+        el.style.opacity = '1';
+      }
+    });
+
+    // Handle delete button click
+    pvBody?.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('.pv-delete');
+      if (!btn) return;
+
+      const id = btn.dataset.id;
+      if (!confirm('Delete this item? This cannot be undone.')) return;
+
+      try {
+        const res = await fetch(`{{ route('dashboard.items.destroy', ['id' => '__ID__']) }}`.replace('__ID__', id), {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': CSRF,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ _method: 'DELETE' })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        // Refresh both tables
+        await loadPreviewAndOpen();
+        if (typeof fetchData === 'function') {
+          await fetchData({ resetWindow: false, silent: true });
+        }
+
+      } catch (err) {
+        console.error('Delete failed:', err);
+        alert('Failed to delete item: ' + err.message);
+      }
+    });
+
 
     let rotateTimer = null;
     let refreshTimer = null;
@@ -1562,24 +1665,25 @@ $(function(){
     ].some(sel => $(sel).val());
     }
 
-   function statusBadge(status, overdue){
+  function statusBadge(status, overdue) {
   let s = (status || '').trim();
   if (!s) s = 'Pending';
 
-  // Check if status is in a closed state
+  // Closed states remain as-is
   const sLower = s.toLowerCase();
   const closedStates = ['completed', 'done', 'cancelled', 'expired'];
   const isClosed = closedStates.includes(sLower);
 
-  // If overdue and status is still open, display Expired in UI
-  if (overdue && !isClosed) {
-    s = 'Expired';
-  }
+  // Add CSS class for overdue (instead of changing text)
+  const cls = (overdue && !isClosed) ? 'badge-overdue' : '';
+  const safe = String(s).replace(/\s/g, '\\ ');
 
-  const cls = (s === 'Expired') ? 'badge-expired' : '';
-  const safe = String(s).replace(/\s/g,'\\ ');
-  return `<span class="badge badge-animated ${safe} ${cls}">${s}</span>`;
+  // Optional tag text
+  const tag = (overdue && !isClosed) ? ' <span class="text-red-600 font-semibold">(Overdue)</span>' : '';
+
+  return `<span class="badge badge-animated ${safe} ${cls}">${s}</span>${tag}`;
 }
+
 
 
     function fmt(d){

@@ -63,16 +63,16 @@ protected function baseQuery(array $filters)
         }
     }
 
-    // ✅ Expose a UI status that matches your frontend logic
-    $q->addSelect(DB::raw("
-        CASE
-          WHEN items.deadline IS NOT NULL
-           AND DATE(items.deadline) < CURDATE()
-           AND items.status NOT IN ('Completed','Done','Cancelled','Expired')
-          THEN 'Expired'
-          ELSE items.status
-        END AS status_ui
-    "));
+    // // ✅ Expose a UI status that matches your frontend logic
+    // $q->addSelect(DB::raw("
+    //     CASE
+    //       WHEN items.deadline IS NOT NULL
+    //        AND DATE(items.deadline) < CURDATE()
+    //        AND items.status NOT IN ('Completed','Done','Cancelled','Expired')
+    //       THEN 'Expired'
+    //       ELSE items.status
+    //     END AS status_ui
+    // "));
 
     return $q;
 }
@@ -166,6 +166,10 @@ protected function baseQuery(array $filters)
             $user = $request->user();
 
             $data = $items->map(function ($i) use ($user) {
+            // Only compute overdue flag, NOT status_ui
+            $isOverdue = $i->deadline
+                && now()->startOfDay()->gt(\Carbon\Carbon::parse($i->deadline)->startOfDay())
+                && !in_array(strtolower($i->status ?? ''), ['completed', 'done', 'cancelled']);
                 return [
                     'id'           => $i->id,
                     'date_in'      => $i->date_in,
@@ -176,7 +180,8 @@ protected function baseQuery(array $filters)
                     'company_id'   => $i->company_id,
                     'pic_name'     => $i->pic_name,
                     'product_id'   => $i->product_id,
-                    'status' => $i->status_ui ?? $i->status,
+                    'status'     => $i->status,
+                    'status_ui'  => $i->status_ui ?? $i->status,
                     'remarks'      => $i->remarks,
                     'task'         => $i->task,
 
@@ -376,7 +381,7 @@ protected function baseQuery(array $filters)
                     'id'     => $row->id,
                     'title'  => implode(' | ', array_filter($titleParts, fn($v) => $v !== null && $v !== '' && $v !== '-')),
                     'start'  => $row->deadline,
-                    'status' => $row->status_ui ?? $row->status,
+                    'status' => $row->status,
                     'allDay' => true,
                 ];
             })->values();
