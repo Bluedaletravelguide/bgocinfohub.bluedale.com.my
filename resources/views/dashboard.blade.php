@@ -879,9 +879,14 @@
 
 
 // ===== COMPLETED TASKS MODAL =====
+
+let selectedPreviewStatus = null; // null = show all; otherwise "Pending" | "In Progress" | "Completed" | "Expired"
+const PREVIEW_PER_PAGE = 10;
+let previewPage = { 'Pending':1, 'In Progress':1, 'Completed':1, 'Expired':1 };
+let lastPreviewRows = [];
 let completedData = [];
 let completedPage = 1;
-const COMPLETED_PER_PAGE = 20;
+const COMPLETED_PER_PAGE = 10;
 
 function openCompletedModal() {
   document.getElementById('completedModal')?.classList.remove('hidden');
@@ -904,6 +909,7 @@ function renderCompletedTable(page = 1) {
   };
 
   const columns = [
+     { key: '_no', label: 'No', render: (_r, i, startIdx) => startIdx + i + 1 },
     { key: 'date_in',      label: 'Date In',  format: 'date' },
     { key: 'deadline',     label: 'Deadline', format: 'date' },
     { key: 'assign_by_id', label: 'Assign By' },
@@ -1169,24 +1175,67 @@ function renderSummaryChips(rows) {
   if (!wrap) return;
 
   const counts = rows.reduce((acc, r) => {
-    const s = (r.status || '').toString();
+    const s = (r.status || '').toString().trim();
     acc[s] = (acc[s] || 0) + 1;
     return acc;
   }, {});
 
-  wrap.innerHTML = '';
-  const total = rows.length;
-  const chip = (label, value) => `
-    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border hairline bg-white">
-      <span class="text-xs text-neutral-500">${label}</span>
-      <span class="text-sm font-medium text-neutral-900">${value}</span>
-    </span>`;
+  const order = ['Expired','Pending','In Progress','Completed'];
 
-  wrap.insertAdjacentHTML('beforeend', chip('Total', total));
-  Object.keys(counts).sort().forEach(k => {
-    wrap.insertAdjacentHTML('beforeend', chip(k || '(no status)', counts[k]));
+  const chip = (label, value, opts = {}) => {
+    const active = opts.active ? ' bg-blue-50 border-blue-300 text-blue-800' : ' bg-white';
+    const classes = `chip inline-flex items-center gap-2 px-3 py-1 rounded-full border hairline cursor-pointer select-none${active}`;
+    const ds = opts.status ? ` data-status="${opts.status}"` : '';
+    return `<span class="${classes}"${ds}>
+      <span class="text-xs text-neutral-500">${label}</span>
+      <span class="text-sm font-medium">${value}</span>
+    </span>`;
+  };
+
+  wrap.innerHTML = '';
+  // Total (clicking it clears filter)
+  wrap.insertAdjacentHTML('beforeend',
+    `<span class="chip chip-clear inline-flex items-center gap-2 px-3 py-1 rounded-full border hairline ${selectedPreviewStatus===null ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-white'} cursor-pointer select-none">
+      <span class="text-xs text-neutral-500">Total</span>
+      <span class="text-sm font-medium">${rows.length}</span>
+    </span>`
+  );
+
+  order.forEach(st => {
+    if ((counts[st] || 0) > 0) {
+      wrap.insertAdjacentHTML('beforeend', chip(st, counts[st], {
+        status: st,
+        active: selectedPreviewStatus === st
+      }));
+    }
   });
 }
+
+
+
+
+
+// Clickable chips in Preview header
+document.getElementById('previewSummary')?.addEventListener('click', (ev) => {
+  const chipClear = ev.target.closest('.chip-clear');
+  const chip = ev.target.closest('.chip[data-status]');
+  if (chipClear) {
+    selectedPreviewStatus = null;
+    // reset pages
+    previewPage = { 'Pending':1, 'In Progress':1, 'Completed':1, 'Expired':1 };
+    renderSummaryChips(lastPreviewRows);
+    renderPreviewTable(lastPreviewRows);
+    return;
+  }
+  if (chip) {
+    const st = chip.getAttribute('data-status');
+    selectedPreviewStatus = st;
+    // ensure page in range
+    previewPage[st] = previewPage[st] || 1;
+    renderSummaryChips(lastPreviewRows);
+    renderPreviewTable(lastPreviewRows);
+  }
+});
 
 // ✅ Helper functions (HARUS DI LUAR renderPreviewTable)
 function statusOptions(selected){
@@ -1221,6 +1270,8 @@ function renderPreviewTable(rows) {
   const body = document.getElementById('previewBody');
   const empty = document.getElementById('previewEmpty');
   if (!head || !body) return;
+
+  lastPreviewRows = rows || [];
 
   const esc = s => {
     if (s === null || s === undefined) return '';
@@ -1258,65 +1309,110 @@ function renderPreviewTable(rows) {
   }
   empty?.classList.add('hidden');
 
-  // Group by status
-const statusOrder = ['Pending', 'In Progress', 'Completed'];
-const grouped = {};
-statusOrder.forEach(status => {
-  grouped[status] = rows.filter(r => {
-    const s = (r.status || '').trim().toLowerCase();
-    return s === status.toLowerCase();
-  }).sort((a, b) => {
-    // Sort by overdue first, then by deadline
-    const overdueA = a.is_overdue ? 0 : 1;  // ✅ CORRECT: use a
-    const overdueB = b.is_overdue ? 0 : 1;  // ✅ CORRECT: use b
-    if (overdueA !== overdueB) return overdueA - overdueB;
+  // Group by status with deterministic order
+const allOrder = ['Expired', 'Pending', 'In Progress', 'Completed'];
+  const statusOrder = selectedPreviewStatus ? [selectedPreviewStatus] : allOrder;
 
-    const dateA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
-    const dateB = b.deadline ? new Date(b.deadline).getTime() : Infinity;
-    return dateA - dateB;
+  const grouped = {};
+  statusOrder.forEach(status => {
+    grouped[status] = rows.filter(r => {
+      const s = (r.status || '').trim().toLowerCase();
+      return s === status.toLowerCase();
+    }).sort((a, b) => {
+      const overdueA = a.is_overdue ? 0 : 1;
+      const overdueB = b.is_overdue ? 0 : 1;
+      if (overdueA !== overdueB) return overdueA - overdueB;
+      const dateA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const dateB = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      return dateA - dateB;
+    });
   });
-});
 
-  // Render sections
+  // Build sections + pagination
   let html = '';
   statusOrder.forEach(status => {
-    const items = grouped[status];
-    if (items && items.length > 0) {
-      html += `
-        <tr class="section-header-row">
-          <td colspan="${columns.length}" class="section-header-cell">
-            ${status}
-          </td>
-        </tr>
-      `;
+    const items = grouped[status] || [];
+    if (items.length === 0) return;
 
-      items.forEach(r => {
-        const tds = columns.map(c => {
-          let cellClass = 'px-3 py-2 border-b hairline align-top';
+    // pagination math
+    const total = items.length;
+    const totalPages = Math.max(1, Math.ceil(total / PREVIEW_PER_PAGE));
+    const page = Math.min(previewPage[status] || 1, totalPages);
+    previewPage[status] = page; // clamp
+    const startIdx = (page - 1) * PREVIEW_PER_PAGE;
+    const endIdx = Math.min(startIdx + PREVIEW_PER_PAGE, total);
+    const pageItems = items.slice(startIdx, endIdx);
 
-          if (c.key === 'deadline' && r.is_overdue) {
-    cellClass += ' text-red-deadline';
-}
+    // section header
+    html += `
+      <tr class="section-header-row">
+        <td colspan="${columns.length}" class="section-header-cell">
+          ${status}
+        </td>
+      </tr>
+    `;
 
-          if (typeof c.render === 'function') {
-            const html = c.render(r);
-            return `<td class="${cellClass}">${html}</td>`;
-          }
-
-          let val = r[c.key];
-          if (c.format === 'date' && typeof window.fmt === 'function') {
-            val = window.fmt(val);
-          }
-          return `<td class="${cellClass}">${esc(val)}</td>`;
-        }).join('');
-
-        html += `<tr class="hover:bg-neutral-50">${tds}</tr>`;
-      });
+    // rows
+   pageItems.forEach((r, i) => {
+  const tds = columns.map(c => {
+    let cellClass = 'px-3 py-2 border-b hairline align-top';
+    if (c.key === 'deadline' && r.is_overdue) {
+      cellClass += ' text-red-deadline';
     }
+
+    // 👈 Pass startIdx also so "No" can calculate correctly
+    if (typeof c.render === 'function') {
+      const inner = c.render(r, i, startIdx);
+      return `<td class="${cellClass}">${inner}</td>`;
+    }
+
+    let val = r[c.key];
+    if (c.format === 'date' && typeof window.fmt === 'function') {
+      val = window.fmt(val);
+    }
+    return `<td class="${cellClass}">${esc(val)}</td>`;
+  }).join('');
+  html += `<tr class="hover:bg-neutral-50">${tds}</tr>`;
+});
+
+
+    // pagination row (per section)
+    html += `
+      <tr>
+        <td colspan="${columns.length}" class="px-3 py-2 border-b hairline">
+          <div class="flex items-center justify-between text-sm">
+            <div class="text-neutral-600">
+              Showing <b>${startIdx + 1}</b>–<b>${endIdx}</b> of <b>${total}</b> ${status.toLowerCase()}
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="pv-page-prev px-3 py-1 rounded-lg border hairline hover:bg-neutral-50 disabled:opacity-50"
+                      data-status="${status}" ${page<=1 ? 'disabled' : ''}>Previous</button>
+              <span class="text-neutral-600">Page ${page} / ${totalPages}</span>
+              <button class="pv-page-next px-3 py-1 rounded-lg border hairline hover:bg-neutral-50 disabled:opacity-50"
+                      data-status="${status}" ${page>=totalPages ? 'disabled' : ''}>Next</button>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
   });
 
   body.innerHTML = html;
 }
+
+
+// Preview per-section pagination
+document.getElementById('previewBody')?.addEventListener('click', (ev) => {
+  const prev = ev.target.closest('.pv-page-prev');
+  const next = ev.target.closest('.pv-page-next');
+  if (!prev && !next) return;
+
+  const status = (prev || next).getAttribute('data-status');
+  const dir = prev ? -1 : 1;
+  previewPage[status] = Math.max(1, (previewPage[status] || 1) + dir);
+  renderPreviewTable(lastPreviewRows);
+});
+
 
 // ✅ Load and open preview
 async function loadPreviewAndOpen() {
