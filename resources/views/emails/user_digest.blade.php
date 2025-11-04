@@ -29,13 +29,17 @@
             background-color: #ffebee;
             color: #c62828;
         }
-        h3.pending {
-            background-color: #fff3e0;
-            color: #ef6c00;
+        h3.today {
+            background-color: #fff8e1;
+            color: #f57c00;
         }
-        h3.completed {
-            background-color: #e8f5e9;
-            color: #2e7d32;
+        h3.tomorrow {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        h3.pending {
+            background-color: #f3e5f5;
+            color: #7b1fa2;
         }
         table {
             width: 100%;
@@ -61,19 +65,6 @@
         tr:hover {
             background-color: #f9f9f9;
         }
-        .no-items {
-            padding: 20px;
-            text-align: center;
-            color: #999;
-            font-style: italic;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            font-size: 12px;
-            color: #666;
-        }
         .summary-box {
             display: inline-block;
             margin-right: 20px;
@@ -82,32 +73,43 @@
             font-weight: bold;
         }
         .summary-expired { background-color: #ffebee; color: #c62828; }
-        .summary-pending { background-color: #fff3e0; color: #ef6c00; }
-        .summary-completed { background-color: #e8f5e9; color: #2e7d32; }
+        .summary-today { background-color: #fff8e1; color: #f57c00; }
+        .summary-tomorrow { background-color: #e3f2fd; color: #1976d2; }
+        .summary-pending { background-color: #f3e5f5; color: #7b1fa2; }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>📋 Daily Task Summary - {{ \Carbon\Carbon::now()->format('d M Y') }}</h2>
+        <h2>📋 Your Task Summary - {{ \Carbon\Carbon::now()->format('d M Y') }}</h2>
 
         <p>Hello <strong>{{ $data['user']->name }}</strong>,</p>
-        <p>Here is your daily task summary:</p>
+        <p>Here are your assigned tasks:</p>
 
         <div style="margin: 20px 0;">
-            @if(count($data['expired']) > 0)
-            <span class="summary-box summary-expired">🔴 Expired: {{ count($data['expired']) }}</span>
+            @if($data['expired']->count() > 0)
+            <span class="summary-box summary-expired">🔴 Overdue: {{ $data['expired']->count() }}</span>
             @endif
-            @if(count($data['pending']) > 0)
-            <span class="summary-box summary-pending">🟡 Pending: {{ count($data['pending']) }}</span>
+            @if($data['due_today']->count() > 0)
+            <span class="summary-box summary-today">🟡 Due Today: {{ $data['due_today']->count() }}</span>
             @endif
-            @if(count($data['completed']) > 0)
-            <span class="summary-box summary-completed">🟢 Completed: {{ count($data['completed']) }}</span>
+            @if($data['due_tomorrow']->count() > 0)
+            <span class="summary-box summary-tomorrow">🔵 Due Tomorrow: {{ $data['due_tomorrow']->count() }}</span>
+            @endif
+            @if($data['pending']->count() > 0)
+            <span class="summary-box summary-pending">⚪ Upcoming: {{ $data['pending']->count() }}</span>
             @endif
         </div>
 
-        {{-- EXPIRED TASKS --}}
-        @if(count($data['expired']) > 0)
-        <h3 class="expired">🔴 EXPIRED TASKS ({{ count($data['expired']) }})</h3>
+        {{-- OVERDUE TASKS --}}
+        @if($data['expired']->count() > 0)
+        <h3 class="expired">🔴 OVERDUE TASKS ({{ $data['expired']->count() }})</h3>
         <table>
             <thead>
                 <tr>
@@ -140,9 +142,71 @@
         </table>
         @endif
 
-        {{-- PENDING TASKS --}}
-        @if(count($data['pending']) > 0)
-        <h3 class="pending">🟡 PENDING TASKS ({{ count($data['pending']) }})</h3>
+        {{-- DUE TODAY --}}
+        @if($data['due_today']->count() > 0)
+        <h3 class="today">🟡 DUE TODAY ({{ $data['due_today']->count() }})</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Company</th>
+                    <th>Type</th>
+                    <th>PIC</th>
+                    <th>Product</th>
+                    <th>Status</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($data['due_today'] as $item)
+                <tr>
+                    <td><strong>{{ $item->task }}</strong></td>
+                    <td>{{ $item->company_id ?? '-' }}</td>
+                    <td>{{ $item->type_label ?? '-' }}</td>
+                    <td>{{ $item->pic_name ?? '-' }}</td>
+                    <td>{{ $item->product_id ?? '-' }}</td>
+                    <td>{{ $item->status }}</td>
+                    <td>{{ $item->remarks ?? '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+
+        {{-- DUE TOMORROW --}}
+        @if($data['due_tomorrow']->count() > 0)
+        <h3 class="tomorrow">🔵 DUE TOMORROW ({{ $data['due_tomorrow']->count() }})</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Company</th>
+                    <th>Type</th>
+                    <th>PIC</th>
+                    <th>Product</th>
+                    <th>Status</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($data['due_tomorrow'] as $item)
+                <tr>
+                    <td><strong>{{ $item->task }}</strong></td>
+                    <td>{{ $item->company_id ?? '-' }}</td>
+                    <td>{{ $item->type_label ?? '-' }}</td>
+                    <td>{{ $item->pic_name ?? '-' }}</td>
+                    <td>{{ $item->product_id ?? '-' }}</td>
+                    <td>{{ $item->status }}</td>
+                    <td>{{ $item->remarks ?? '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+
+        {{-- UPCOMING TASKS --}}
+        @if($data['pending']->count() > 0)
+        <h3 class="pending">⚪ UPCOMING TASKS ({{ $data['pending']->count() }})</h3>
         <table>
             <thead>
                 <tr>
@@ -175,43 +239,8 @@
         </table>
         @endif
 
-        {{-- COMPLETED TASKS --}}
-        @if(count($data['completed']) > 0)
-        <h3 class="completed">🟢 COMPLETED TASKS ({{ count($data['completed']) }})</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Task</th>
-                    <th>Company</th>
-                    <th>Type</th>
-                    <th>PIC</th>
-                    <th>Product</th>
-                    <th>Deadline</th>
-                    <th>Status</th>
-                    <th>Remarks</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($data['completed'] as $item)
-                <tr>
-                    <td><strong>{{ $item->task }}</strong></td>
-                    <td>{{ $item->company_id ?? '-' }}</td>
-                    <td>{{ $item->type_label ?? '-' }}</td>
-                    <td>{{ $item->pic_name ?? '-' }}</td>
-                    <td>{{ $item->product_id ?? '-' }}</td>
-                    <td>
-                        {{ $item->deadline ? \Carbon\Carbon::parse($item->deadline)->format('d M Y') : '-' }}
-                    </td>
-                    <td>{{ $item->status }}</td>
-                    <td>{{ $item->remarks ?? '-' }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-        @endif
-
         <div class="footer">
-            <p>This is an automated daily summary from BGOC Information Booth system.</p>
+            <p>This is your personal task summary from BGOC Information Booth system.</p>
             <p>Sent on {{ \Carbon\Carbon::now()->format('l, d F Y H:i') }}</p>
         </div>
     </div>

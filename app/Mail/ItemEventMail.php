@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Mail;
 
@@ -23,12 +23,12 @@ class ItemEventMail extends Mailable
         $subject = match ($this->event) {
             ItemEvent::CREATED          => "🆕 [BGOC] New Task: {$this->item->task}",
             ItemEvent::STATUS_CHANGED   => "🔄 [BGOC] Status → {$this->item->status}: {$this->item->task}",
-            ItemEvent::ASSIGNEE_CHANGED => "👤 [BGOC] You’ve been assigned: {$this->item->task}",
+            ItemEvent::ASSIGNEE_CHANGED => "👤 [BGOC] You've been assigned: {$this->item->task}",
             default                     => "[BGOC] Update: {$this->item->task}",
         };
 
         return $this->subject($subject)
-            ->view('emails.item_event')
+            ->view('emails.item_event_single')  // ← Changed from item_event
             ->with([
                 'event' => $this->event,
                 'item'  => $this->item,

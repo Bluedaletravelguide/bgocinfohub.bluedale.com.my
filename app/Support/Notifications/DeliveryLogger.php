@@ -10,13 +10,15 @@ class DeliveryLogger
     /**
      * Return true to SKIP sending (debounced).
      */
-    public function shouldDebounce(int $userId, int $itemId, string $channel, string $event, int $seconds = 300): bool
+   public function shouldDebounce(int $userId, int $itemId, string $channel, string $event, int $seconds = 300): bool
     {
-        $key = $this->fingerprint($userId, $itemId, $channel, $event);
-        if (Cache::has($key)) {
-            return true;
-        }
-        Cache::put($key, 1, $seconds);
+        $seconds = (int) (env('NOTIF_DEBOUNCE_SECONDS', $seconds));
+        if ($seconds <= 0) return false;
+
+        $key = "notify:{$channel}:{$event}:u{$userId}:i{$itemId}";
+        if (cache()->has($key)) return true;
+
+        cache()->put($key, 1, $seconds);
         return false;
     }
 

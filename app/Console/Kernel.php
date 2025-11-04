@@ -12,11 +12,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Run every day at 9 AM
+        // Admin digest at 9 AM
         $schedule->command('items:send-deadline-reminders')->dailyAt('09:00');
 
-        // OR run every hour if you want more frequent checks:
-        // $schedule->command('items:send-deadline-reminders')->hourly();
+        // User-specific digests at 8 AM
+        $schedule->call(function () {
+            $users = \App\Models\User::whereNotNull('email')
+                ->where('role', '!=', 'admin')  // Skip admins (they get the admin digest)
+                ->get();
+
+            foreach ($users as $user) {
+                \App\Jobs\SendUserDigestJob::dispatch($user->id);
+            }
+        })->dailyAt('08:00');
     }
 
     /**
