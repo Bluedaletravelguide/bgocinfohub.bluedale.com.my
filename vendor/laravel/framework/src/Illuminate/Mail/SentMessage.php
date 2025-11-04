@@ -5,6 +5,7 @@ namespace Illuminate\Mail;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Traits\ForwardsCalls;
 use Symfony\Component\Mailer\SentMessage as SymfonySentMessage;
+use Symfony\Component\Mime\Email;
 
 /**
  * @mixin \Symfony\Component\Mailer\SentMessage
@@ -59,7 +60,13 @@ class SentMessage
      */
     public function __serialize()
     {
-        $hasAttachments = (new Collection($this->sentMessage->getOriginalMessage()->getAttachments()))->isNotEmpty();
+        $originalMessage = $this->sentMessage->getOriginalMessage();
+
+        $hasAttachments = false;
+
+        if ($originalMessage instanceof Email) {
+            $hasAttachments = (new Collection($originalMessage->getAttachments()))->isNotEmpty();
+        }
 
         return [
             'hasAttachments' => $hasAttachments,

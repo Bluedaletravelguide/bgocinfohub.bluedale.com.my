@@ -8,48 +8,40 @@ use Illuminate\Support\Facades\Log;
 class DeliveryLogger
 {
     /**
-     * Check if notification should be debounced (skipped due to recent send)
+     * Return true to SKIP sending (debounced).
      */
-    public function shouldDebounce(int $userId, int $itemId, string $channel, string $event, int $minutes = 5): bool
+    public function shouldDebounce(int $userId, int $itemId, string $channel, string $event, int $seconds = 300): bool
     {
-        $key = $this->getCacheKey($userId, $itemId, $channel, $event);
-        return Cache::has($key);
+        $key = $this->fingerprint($userId, $itemId, $channel, $event);
+        if (Cache::has($key)) {
+            return true;
+        }
+        Cache::put($key, 1, $seconds);
+        return false;
     }
 
-    /**
-     * Log that a notification was sent
-     */
-    public function logSent(int $userId, int $itemId, string $channel, string $event, int $minutes = 5): void
+    public function logSent(int $userId, int $itemId, string $channel, string $event, array $extra = []): void
     {
-        $key = $this->getCacheKey($userId, $itemId, $channel, $event);
-        Cache::put($key, true, now()->addMinutes($minutes));
-
-        Log::info('Notification sent', [
+        Log::info('[Notify][SENT]', array_merge([
             'user_id' => $userId,
             'item_id' => $itemId,
             'channel' => $channel,
-            'event' => $event,
-        ]);
+            'event'   => $event,
+        ], $extra));
     }
 
-    /**
-     * Log that a notification was skipped
-     */
-    public function logSkipped(int $userId, int $itemId, string $channel, string $event, array $metadata = []): void
+    public function logSkipped(int $userId, int $itemId, string $channel, string $event, array $extra = []): void
     {
-        Log::info('Notification skipped', array_merge([
+        Log::info('[Notify][SKIPPED]', array_merge([
             'user_id' => $userId,
             'item_id' => $itemId,
             'channel' => $channel,
-            'event' => $event,
-        ], $metadata));
+            'event'   => $event,
+        ], $extra));
     }
 
-    /**
-     * Generate cache key for debouncing
-     */
-    protected function getCacheKey(int $userId, int $itemId, string $channel, string $event): string
+    private function fingerprint(int $userId, int $itemId, string $channel, string $event): string
     {
-        return "notification:{$userId}:{$itemId}:{$channel}:{$event}";
+        return "notify:{$channel}:{$event}:u{$userId}:i{$itemId}";
     }
 }

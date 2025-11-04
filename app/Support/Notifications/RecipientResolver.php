@@ -43,20 +43,31 @@ class RecipientResolver
     {
         $key = $this->normalize($raw);
 
+        // 1. Exact email match
         if (str_contains($key, '@')) {
             return User::whereRaw('LOWER(email) = ?', [$key])->first();
         }
 
-        $map = RecipientMapping::where('key', $key)->first();
-        if ($map && $u = User::find($map->user_id, ['*'])) {
-            return $u;
-        }
+        // // 2. Recipient mapping match
+        // $map = RecipientMapping::where('key', $key)->first();
+        // if ($map && $u = User::find($map->user_id, ['*'])) {
+        //     return $u;
+        // }
 
+        // 3. Exact name match
         $u = User::whereRaw('LOWER(name) = ?', [$key])->first();
         if ($u) {
             return $u;
         }
 
+        // 4. NEW: Initials match (only if unique)
+        $all = User::all(['id', 'name', 'email']);
+        $byInitials = $all->filter(fn($usr) => $this->initials($usr->name) === $key);
+        if ($byInitials->count() === 1) {
+            return $byInitials->first();
+        }
+
+        // 5. Partial name match (only if unique)
         $cands = User::whereRaw('LOWER(name) LIKE ?', ["%{$key}%"])->get();
         return $cands->count() === 1 ? $cands->first() : null;
     }
@@ -67,6 +78,14 @@ class RecipientResolver
         $s = preg_replace('/\s+/', ' ', $s);
         $s = preg_replace('/[^a-z0-9@.\s]/', '', $s);
         return $s;
+    }
+
+    protected function initials(string $name): string
+    {
+        // "Gilang Eko" -> "ge"
+        $parts = preg_split('/\s+/', strtolower(trim($name)));
+        $letters = array_map(fn($p) => mb_substr($p, 0, 1), array_filter($parts));
+        return implode('', $letters);
     }
 
     /**
