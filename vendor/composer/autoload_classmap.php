@@ -6,6 +6,9 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'App\\Console\\Commands\\SendDailyTaskSummary' => $baseDir . '/app/Console/Commands/SendDailyTaskSummary.php',
+    'App\\Console\\Commands\\SendDeadlineReminders' => $baseDir . '/app/Console/Commands/SendDeadlineReminders.php',
+    'App\\Console\\Kernel' => $baseDir . '/app/Console/Kernel.php',
     'App\\Exports\\ItemsExport' => $baseDir . '/app/Exports/ItemsExport.php',
     'App\\Http\\Controllers\\AdminUserController' => $baseDir . '/app/Http/Controllers/AdminUserController.php',
     'App\\Http\\Controllers\\Auth\\AuthenticatedSessionController' => $baseDir . '/app/Http/Controllers/Auth/AuthenticatedSessionController.php',
@@ -27,8 +30,11 @@ return array(
     'App\\Http\\Requests\\ProfileUpdateRequest' => $baseDir . '/app/Http/Requests/ProfileUpdateRequest.php',
     'App\\Jobs\\SendDailyDigestJob' => $baseDir . '/app/Jobs/SendDailyDigestJob.php',
     'App\\Jobs\\SendItemNotificationJob' => $baseDir . '/app/Jobs/SendItemNotificationJob.php',
+    'App\\Jobs\\SendUserDigestJob' => $baseDir . '/app/Jobs/SendUserDigestJob.php',
     'App\\Mail\\DailyDigestMail' => $baseDir . '/app/Mail/DailyDigestMail.php',
+    'App\\Mail\\DailyTaskSummary' => $baseDir . '/app/Mail/DailyTaskSummary.php',
     'App\\Mail\\ItemEventMail' => $baseDir . '/app/Mail/ItemEventMail.php',
+    'App\\Mail\\UserDigestMail' => $baseDir . '/app/Mail/UserDigestMail.php',
     'App\\Models\\Company' => $baseDir . '/app/Models/Company.php',
     'App\\Models\\DeliveryLog' => $baseDir . '/app/Models/DeliveryLog.php',
     'App\\Models\\Item' => $baseDir . '/app/Models/Item.php',

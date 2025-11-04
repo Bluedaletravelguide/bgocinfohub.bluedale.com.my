@@ -33,6 +33,23 @@
   opacity: 0.8;
 }
 
+
+/* Make decorative layers non-interactive so they don't block clicks */
+.bg-gradient-animated,
+.particles,
+.particle {
+  pointer-events: none !important;
+}
+
+/* Ensure main interactive sections sit above */
+.toolbar,
+.card .filter-panel,
+.card .table-section,
+.calendar-section {
+  position: relative;
+  z-index: 1;
+}
+
 /* 🔴 SECTION HEADERS IN PREVIEW - UPDATED: LEFT ALIGN + RED TEXT */
 #previewTable .section-header-row {
   background: linear-gradient(135deg, #b4c7e7 0%, #8fa9d4 100%) !important;
@@ -82,14 +99,39 @@
   transition: background-color 0.15s ease;
 }
 
+/* ✅ NEW: Show pointer cursor on clickable preview rows */
+#previewTable tbody tr[data-id] {
+  cursor: pointer;
+}
+
+#previewTable tbody tr[data-id]:hover {
+  background-color: #f3f4f6 !important;
+}
+
+/* Don't show pointer on section headers or pagination rows */
+#previewTable .section-header-row,
+#previewTable tr:has(td[colspan]) {
+  cursor: default;
+}
+
 /* Red deadline for expired */
 .text-red-deadline {
   color: #dc2626 !important;
   font-weight: 600 !important;
 }
 /* Modal backdrop styling */
+/* Modal backdrop styling */
 #previewModal, #completedModal {
   backdrop-filter: blur(4px);
+}
+
+/* ✅ NEW: Edit Modal should appear above Preview Modal */
+#editModal {
+  z-index: 10000 !important;
+}
+
+#previewModal, #completedModal {
+  z-index: 9999 !important;
 }
 
 /* Hairline border utility */
@@ -1375,7 +1417,15 @@ const allOrder = ['Expired', 'Pending', 'In Progress', 'Completed'];
     }
     return `<td class="${cellClass}">${esc(val)}</td>`;
   }).join('');
-  html += `<tr class="hover:bg-neutral-50">${tds}</tr>`;
+  html += `
+    <tr
+      class="hover:bg-neutral-50 pv-row"
+      data-id="${esc(r.id)}"
+      data-can-update="${r.can_update ? '1' : '0'}"
+    >
+      ${tds}
+    </tr>
+  `;
 });
 
 
@@ -1416,8 +1466,25 @@ document.getElementById('previewBody')?.addEventListener('click', (ev) => {
   renderPreviewTable(lastPreviewRows);
 });
 
+ // Click a preview row → open Edit modal (ignore clicks on controls)
+ document.getElementById('previewBody')?.addEventListener('click', (ev) => {
+   // If the click was on an interactive control, do nothing
+   if (ev.target.closest('select, button, a, input, textarea, label')) return;
 
-// ✅ Load and open preview
+   const row = ev.target.closest('tr[data-id]');
+   if (!row) return;
+
+   const id = row.getAttribute('data-id');
+   const canUpdate = row.getAttribute('data-can-update') === '1';
+
+   // Use your existing helper (it already handles 403 + fills the form)
+   // If user lacks permission, openEditModal will no-op after 403 (silent).
+   if (id && typeof window.openEditModal === 'function') window.openEditModal(id);
+
+});
+
+
+
 async function loadPreviewAndOpen() {
   const params = getCurrentFilterParams();
   const url = `{{ route('dashboard.items.list') }}?${params}`;
@@ -1452,6 +1519,28 @@ document.getElementById('previewModal')?.addEventListener('click', (ev) => {
   if (ev.target?.id === 'previewModal') closePreviewModal();
 });
 
+
+// Wire preview button
+document.getElementById('btnPreviewTables')?.addEventListener('click', async () => {
+  try {
+    document.getElementById('btnPreviewTables').disabled = true;
+    await loadPreviewAndOpen();
+  } catch (e) {
+    console.error('Preview error:', e);
+    alert('Failed to load preview. See console for details.');
+  } finally {
+    document.getElementById('btnPreviewTables').disabled = false;
+  }
+});
+
+document.getElementById('previewClose')?.addEventListener('click', closePreviewModal);
+
+document.getElementById('previewClose')?.addEventListener('click', closePreviewModal);
+document.getElementById('previewClose2')?.addEventListener('click', closePreviewModal);
+document.getElementById('previewModal')?.addEventListener('click', (ev) => {
+  if (ev.target?.id === 'previewModal') closePreviewModal();
+});
+
 // ====================================================================
 
 // ---- CAPTURE MODE: rapihin halaman sebelum snapshot ----
@@ -1470,10 +1559,85 @@ function withCaptureMode(run) {
     body.capture-mode .calendar-section { box-shadow:none !important; }
     body.capture-mode .calendar-wrapper { padding:0 !important; margin:0 !important; }
     body.capture-mode #calendar { background:#fff !important; }
-    body.capture-mode .fc { font-size:12px !important; } /* sedikit lebih rapat */
+    body.capture-mode .fc { font-size:12px !important; }
+    /* ========================================
+   🛡️ CLICK-BLOCKING FIX - CRITICAL
+   ======================================== */
+
+/* 1️⃣ Force decorative layers to back */
+.bg-gradient-animated {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -10 !important;
+  pointer-events: none !important;
+}
+
+.particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -5 !important;
+  pointer-events: none !important;
+}
+
+.particle {
+  pointer-events: none !important;
+}
+
+/* 2️⃣ Ensure interactive sections are above */
+.toolbar {
+  position: relative;
+  z-index: 100 !important;
+}
+
+.card {
+  position: relative;
+  z-index: 50 !important;
+}
+
+.filter-panel,
+.table-section,
+.calendar-section {
+  position: relative;
+  z-index: 51 !important;
+}
+
+/* 3️⃣ Modals on top of everything */
+#previewModal,
+#completedModal,
+#createModal,
+#editModal,
+#detailModal {
+  z-index: 9999 !important;
+}
+
+/* 4️⃣ Make sure table rows are clickable */
+.data-table tbody tr {
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+}
+
+/* 5️⃣ Calendar events must be clickable */
+.fc-event {
+  cursor: pointer;
+  z-index: 10 !important;
+}
+
+/* 6️⃣ Tom Select dropdowns */
+.ts-dropdown {
+  z-index: 200 !important;
+}
     body.capture-mode .fc-scrollgrid,
     body.capture-mode .fc-scrollgrid-section { box-shadow:none !important; overflow:visible !important; }
   `;
+
+
   document.head.appendChild(style);
   document.body.classList.add('capture-mode');
 
@@ -1588,6 +1752,23 @@ document.addEventListener('click', function(e){
 
 $(function(){
   try {
+    // 🛡️ GUARD: Hide any stray modal backdrops on page load
+    (function modalBackdropGuard() {
+      const modalIds = ['previewModal', 'completedModal', 'createModal', 'editModal', 'detailModal'];
+      modalIds.forEach(id => {
+        const modal = document.getElementById(id);
+        if (modal && !modal.classList.contains('hidden')) {
+          modal.classList.add('hidden');
+        }
+      });
+      console.log('✅ Modal backdrop guard activated');
+    })();
+
+    // 🛡️ GUARD: Ensure decorative layers never block clicks
+    document.querySelectorAll('.bg-gradient-animated, .particles, .particle').forEach(el => {
+      el.style.pointerEvents = 'none';
+      el.style.zIndex = '-10';
+    });
     const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     const pvBody = document.getElementById('previewBody');
@@ -1743,6 +1924,7 @@ $(function(){
 
     function openModal(modalId){
       const modal = document.getElementById(modalId);
+      modal.classList.remove('hidden');
       modal.classList.add('active');
       document.body.classList.add('modal-open');
     }
@@ -1750,6 +1932,7 @@ $(function(){
     function closeModal(modalId){
       const modal = document.getElementById(modalId);
       modal.classList.remove('active');
+      modal.classList.add('hidden');
       document.body.classList.remove('modal-open');
     }
 
@@ -1852,7 +2035,28 @@ return `
 
 
 }
+
+function fillEditForm(d){
+      const f = document.getElementById('editForm');
+      setInput(f.elements['id'], d.id);
+      setInput(f.elements['date_in'], (d.date_in ?? '').slice(0,10));
+      setInput(f.elements['deadline'], (d.deadline ?? '').slice(0,10));
+      setInput(f.elements['assign_by_id'], d.assign_by_id);
+      setInput(f.elements['assign_to_id'], d.assign_to_id);
+      setInput(f.elements['type_label'], d.type_label);
+      setInput(f.elements['company_id'], d.company_id);
+      setInput(f.elements['task'], d.task);
+      setInput(f.elements['pic_name'], d.pic_name);
+      setInput(f.elements['product_id'], d.product_id);
+      setInput(f.elements['status'], d.status);
+      setInput(f.elements['remarks'], d.remarks);
+    }
+
+
+// define once
 function openEditModal(id){
+  const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
   fetch(`{{ route('dashboard.items.editPayload', ['id' => '__ID__']) }}`.replace('__ID__', id), {
     headers: { 'X-CSRF-TOKEN': CSRF }
   })
@@ -1861,20 +2065,24 @@ function openEditModal(id){
       alert("You don't have permission to edit this item.");
       throw new Error('403');
     }
-    if (!r.ok) {
-      throw new Error(`HTTP ${r.status}`);
-    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
   })
   .then(({data}) => {
     currentDetailData = data;
     fillEditForm(data);
-    openModal('editModal'); // <-- hanya kebuka kalau authorized
+
+    // Open edit modal above preview
+    const editModal = document.getElementById('editModal');
+    editModal.classList.remove('hidden');
+    editModal.classList.add('active');
+    document.body.classList.add('modal-open');
   })
-  .catch(() => {/* diam: kita blok modal untuk non-owner */});
+  .catch(() => { /* silent if unauthorized */ });
 }
 
-
+// publish to global immediately so Preview can call it
+window.openEditModal = openEditModal;
 
     // Delete click (AJAX)
     $('#rows').on('click', '.btnDelete', async function(e){
@@ -2083,72 +2291,66 @@ window.getFilters = getFilters;
       }
     });
 
-    function fillEditForm(d){
-      const f = document.getElementById('editForm');
-      setInput(f.elements['id'], d.id);
-      setInput(f.elements['date_in'], (d.date_in ?? '').slice(0,10));
-      setInput(f.elements['deadline'], (d.deadline ?? '').slice(0,10));
-      setInput(f.elements['assign_by_id'], d.assign_by_id);
-      setInput(f.elements['assign_to_id'], d.assign_to_id);
-      setInput(f.elements['type_label'], d.type_label);
-      setInput(f.elements['company_id'], d.company_id);
-      setInput(f.elements['task'], d.task);
-      setInput(f.elements['pic_name'], d.pic_name);
-      setInput(f.elements['product_id'], d.product_id);
-      setInput(f.elements['status'], d.status);
-      setInput(f.elements['remarks'], d.remarks);
-    }
+
 
     $('#editForm').on('submit', async function(e){
-      e.preventDefault();
-      const f = e.currentTarget;
-      const id = f.elements['id'].value;
+  e.preventDefault();
+  const f = e.currentTarget;
+  const id = f.elements['id'].value;
 
-      const payload = {
-        date_in:      f.elements['date_in'].value || null,
-        deadline:     f.elements['deadline'].value || null,
-        assign_by_id: f.elements['assign_by_id'].value || null,
-        assign_to_id: f.elements['assign_to_id'].value || null,
-        type_label:   f.elements['type_label'].value || null,
-        company_id:   f.elements['company_id'].value || null,
-        task:         f.elements['task'].value || null,
-        pic_name:     f.elements['pic_name'].value || null,
-        product_id:   f.elements['product_id'].value || null,
-        status:       f.elements['status'].value,
-        remarks:      f.elements['remarks'].value || null,
-      };
+  const payload = {
+    date_in:      f.elements['date_in'].value || null,
+    deadline:     f.elements['deadline'].value || null,
+    assign_by_id: f.elements['assign_by_id'].value || null,
+    assign_to_id: f.elements['assign_to_id'].value || null,
+    type_label:   f.elements['type_label'].value || null,
+    company_id:   f.elements['company_id'].value || null,
+    task:         f.elements['task'].value || null,
+    pic_name:     f.elements['pic_name'].value || null,
+    product_id:   f.elements['product_id'].value || null,
+    status:       f.elements['status'].value,
+    remarks:      f.elements['remarks'].value || null,
+  };
 
-      const btn = $('#btnSubmitEdit');
-      const orig = btn.find('.btn-content').text();
-      btn.prop('disabled', true).find('.btn-content').text('Updating...');
+  const btn = $('#btnSubmitEdit');
+  const orig = btn.find('.btn-content').text();
+  btn.prop('disabled', true).find('.btn-content').text('Updating...');
 
-      try {
-        const res = await fetch(`{{ route('dashboard.items.update', ['id' => '__ID__']) }}`.replace('__ID__', id), {
-          method: 'PATCH',
-          headers: {
-            'X-CSRF-TOKEN': CSRF,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if(!res.ok){
-          const err = await res.json().catch(()=>({}));
-          throw new Error(err.error || `HTTP ${res.status}`);
-        }
-
-        alert('Task updated successfully!');
-        closeModal('editModal');
-        await fetchData();
-        if (window.calendar) calendar.refetchEvents();
-      } catch (err){
-        console.error(err);
-        alert('Update failed: ' + err.message);
-      } finally {
-        btn.prop('disabled', false).find('.btn-content').text(orig);
-      }
+  try {
+    const res = await fetch(`{{ route('dashboard.items.update', ['id' => '__ID__']) }}`.replace('__ID__', id), {
+      method: 'PATCH',
+      headers: {
+        'X-CSRF-TOKEN': CSRF,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
     });
+
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    alert('Task updated successfully!');
+    closeModal('editModal');
+
+    // ✅ NEW: Refresh Preview Modal if it's still open
+    if (!document.getElementById('previewModal')?.classList.contains('hidden')) {
+      await loadPreviewAndOpen();
+    }
+
+    // Refresh main table and calendar
+    await fetchData();
+    if (window.calendar) calendar.refetchEvents();
+
+  } catch (err){
+    console.error(err);
+    alert('Update failed: ' + err.message);
+  } finally {
+    btn.prop('disabled', false).find('.btn-content').text(orig);
+  }
+});
 
     // Row click -> detail modal
     $('#rows').on('click', 'tr[data-id]', function(){

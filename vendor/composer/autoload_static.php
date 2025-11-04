@@ -593,6 +593,9 @@ class ComposerStaticInitc514d8f7b9fc5970bdd94287905ef584
     );
 
     public static $classMap = array (
+        'App\\Console\\Commands\\SendDailyTaskSummary' => __DIR__ . '/../..' . '/app/Console/Commands/SendDailyTaskSummary.php',
+        'App\\Console\\Commands\\SendDeadlineReminders' => __DIR__ . '/../..' . '/app/Console/Commands/SendDeadlineReminders.php',
+        'App\\Console\\Kernel' => __DIR__ . '/../..' . '/app/Console/Kernel.php',
         'App\\Exports\\ItemsExport' => __DIR__ . '/../..' . '/app/Exports/ItemsExport.php',
         'App\\Http\\Controllers\\AdminUserController' => __DIR__ . '/../..' . '/app/Http/Controllers/AdminUserController.php',
         'App\\Http\\Controllers\\Auth\\AuthenticatedSessionController' => __DIR__ . '/../..' . '/app/Http/Controllers/Auth/AuthenticatedSessionController.php',
@@ -614,8 +617,11 @@ class ComposerStaticInitc514d8f7b9fc5970bdd94287905ef584
         'App\\Http\\Requests\\ProfileUpdateRequest' => __DIR__ . '/../..' . '/app/Http/Requests/ProfileUpdateRequest.php',
         'App\\Jobs\\SendDailyDigestJob' => __DIR__ . '/../..' . '/app/Jobs/SendDailyDigestJob.php',
         'App\\Jobs\\SendItemNotificationJob' => __DIR__ . '/../..' . '/app/Jobs/SendItemNotificationJob.php',
+        'App\\Jobs\\SendUserDigestJob' => __DIR__ . '/../..' . '/app/Jobs/SendUserDigestJob.php',
         'App\\Mail\\DailyDigestMail' => __DIR__ . '/../..' . '/app/Mail/DailyDigestMail.php',
+        'App\\Mail\\DailyTaskSummary' => __DIR__ . '/../..' . '/app/Mail/DailyTaskSummary.php',
         'App\\Mail\\ItemEventMail' => __DIR__ . '/../..' . '/app/Mail/ItemEventMail.php',
+        'App\\Mail\\UserDigestMail' => __DIR__ . '/../..' . '/app/Mail/UserDigestMail.php',
         'App\\Models\\Company' => __DIR__ . '/../..' . '/app/Models/Company.php',
         'App\\Models\\DeliveryLog' => __DIR__ . '/../..' . '/app/Models/DeliveryLog.php',
         'App\\Models\\Item' => __DIR__ . '/../..' . '/app/Models/Item.php',
