@@ -50,28 +50,37 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::get('/dashboard', [ItemDashboardController::class, 'index'])->name('dashboard');
 
     // Dashboard Items Routes
-    Route::prefix('dashboard')->name('dashboard.')->group(function () {
-        Route::prefix('items')->name('items.')->group(function () {
-            Route::get('/',       [ItemDashboardController::class, 'index'])->name('index');
-            Route::get('/list',   [ItemDashboardController::class, 'list'])->name('list');
-            Route::get('/events', [ItemDashboardController::class, 'events'])->name('events');
-            Route::post('/',      [ItemDashboardController::class, 'store'])->name('store');
-            Route::patch('/{id}', [ItemDashboardController::class, 'update'])->whereNumber('id')->name('update');
-            Route::patch('/{id}/status', [ItemDashboardController::class, 'updateStatus'])->whereNumber('id')->name('status');
-            Route::get('/{id}',   [ItemDashboardController::class, 'show'])->whereNumber('id')->name('show');
+Route::prefix('dashboard')->name('dashboard.')->group(function () {
+    Route::prefix('items')->name('items.')->group(function () {
+        Route::get('/',       [ItemDashboardController::class, 'index'])->name('index');
+        Route::get('/list',   [ItemDashboardController::class, 'list'])->name('list');
+        Route::get('/events', [ItemDashboardController::class, 'events'])->name('events');
+        Route::post('/',      [ItemDashboardController::class, 'store'])->name('store');
+        Route::patch('/{id}', [ItemDashboardController::class, 'update'])->whereNumber('id')->name('update');
+        Route::patch('/{id}/status', [ItemDashboardController::class, 'updateStatus'])->whereNumber('id')->name('status');
 
-            // Edit Payload (owner/admin only via policy)
-            Route::get('/{id}/edit-payload', [ItemDashboardController::class, 'editPayload'])
+        // ✅ define this BEFORE the generic "/{id}" route
+        Route::get('/{id}/edit-payload', [ItemDashboardController::class, 'editPayload'])
+            ->whereNumber('id')
+            ->name('editPayload');
+
+        // generic show route — keep last so it doesn't swallow other routes
+        Route::get('/{id}', [ItemDashboardController::class, 'show'])
+            ->whereNumber('id')
+            ->name('show');
+
+        // export (open to any authenticated user; query enforces ownership)
+        Route::get('/export', [ItemDashboardController::class, 'export'])->name('export');
+
+        // admin-only destructive
+        Route::middleware('role:admin')->group(function () {
+            Route::delete('/{id}', [ItemDashboardController::class, 'destroy'])
                 ->whereNumber('id')
-                ->name('editPayload');
-
-            // Admin only routes
-            Route::middleware('role:admin')->group(function () {
-                Route::get('/export', [ItemDashboardController::class, 'export'])->name('export');
-                Route::delete('/{id}', [ItemDashboardController::class, 'destroy'])->whereNumber('id')->name('destroy');
-            });
+                ->name('destroy');
         });
     });
+});
+
 
     // ============================================
     // ADMIN ROUTES (Users Management)

@@ -613,6 +613,7 @@ class ComposerStaticInitc514d8f7b9fc5970bdd94287905ef584
         'App\\Http\\Controllers\\ProductController' => __DIR__ . '/../..' . '/app/Http/Controllers/ProductController.php',
         'App\\Http\\Controllers\\ProfileController' => __DIR__ . '/../..' . '/app/Http/Controllers/ProfileController.php',
         'App\\Http\\Controllers\\StatusHistoryController' => __DIR__ . '/../..' . '/app/Http/Controllers/StatusHistoryController.php',
+        'App\\Http\\Middleware\\TickScheduler' => __DIR__ . '/../..' . '/app/Http/Middleware/TickScheduler.php',
         'App\\Http\\Requests\\Auth\\LoginRequest' => __DIR__ . '/../..' . '/app/Http/Requests/Auth/LoginRequest.php',
         'App\\Http\\Requests\\ProfileUpdateRequest' => __DIR__ . '/../..' . '/app/Http/Requests/ProfileUpdateRequest.php',
         'App\\Jobs\\SendDailyDigestJob' => __DIR__ . '/../..' . '/app/Jobs/SendDailyDigestJob.php',

@@ -9,33 +9,55 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Events\AfterSheet;
+use App\Models\User;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class ItemsExport implements FromCollection, WithMapping, WithEvents, ShouldAutoSize
 {
     protected $filters;
+protected $user;
+protected $isAdmin;
 
-    public function __construct(array $filters = [])
-    {
-        $this->filters = $filters;
-    }
+public function __construct(array $filters = [], ?User $user = null, bool $isAdmin = false)
+{
+    $this->filters = $filters;
+    $this->user = $user ?? Auth::user();
+    $this->isAdmin = $isAdmin;
+}
 
-   public function collection()
+public function collection()
 {
     $q = Item::query();
 
-    // Apply filters
+    // 🔒 ENFORCE USER OWNERSHIP (kecuali admin)
+    if (!$this->isAdmin) {
+        // Ambil data user yang login
+        $userEmail = strtolower($this->user->email);
+        $userName = strtolower($this->user->name);
+
+        // Filter: cuma tampil data yang ada hubungannya dengan user ini
+        $q->where(function($subQuery) use ($userEmail, $userName) {
+            // Match by email (exact dan partial)
+            $subQuery->whereRaw('LOWER(assign_to_id) LIKE ?', ["%{$userEmail}%"])
+                     ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$userEmail}%"])
+                     // Match by name (exact dan partial)
+                     ->orWhereRaw('LOWER(assign_to_id) LIKE ?', ["%{$userName}%"])
+                     ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$userName}%"]);
+        });
+    }
+    // Kalau admin, tidak ada filter (ambil semua data)
+
+    // Apply date filters
     if (!empty($this->filters['date_in_from'])) {
         $q->whereDate('date_in', '>=', $this->filters['date_in_from']);
     }
-    if (!empty($this->filters['assign_by_id'])) {
-        $q->where('assign_by_id', $this->filters['assign_by_id']);
-    }
-    if (!empty($this->filters['assign_to_id'])) {
-        $q->where('assign_to_id', $this->filters['assign_to_id']);
-    }
+
+    // Apply other filters
     if (!empty($this->filters['type_label'])) {
         $q->where('type_label', $this->filters['type_label']);
     }
@@ -55,14 +77,11 @@ class ItemsExport implements FromCollection, WithMapping, WithEvents, ShouldAuto
         $q->where('status', $this->filters['status']);
     }
 
-    // 🔴 FIX: Cara yang benar untuk force fresh data
-    $items = $q->get()->map(function($item) {
-        // Force model refresh untuk bypass cache
-        return $item->fresh() ?? $item;
-    });
+    // Get data
+    $items = $q->get();
 
     // Define status order
-    $statusOrder = ['Expired', 'Pending', 'In Progress' , 'Completed'];
+    $statusOrder = ['Expired', 'Pending', 'In Progress', 'Completed'];
 
     // Group and sort
     $grouped = collect();
@@ -74,20 +93,16 @@ class ItemsExport implements FromCollection, WithMapping, WithEvents, ShouldAuto
             return $item->deadline ? Carbon::parse($item->deadline)->timestamp : PHP_INT_MAX;
         })->values();
 
-        // Add section header row + column headers for each section
         if ($statusItems->isNotEmpty()) {
-            // Section title row
             $grouped->push((object)[
                 'is_section_header' => true,
                 'section_title' => strtoupper($status),
             ]);
 
-            // Column headers row for this section
             $grouped->push((object)[
                 'is_column_header' => true,
             ]);
 
-            // Add items for this status
             foreach ($statusItems as $item) {
                 $grouped->push($item);
             }
@@ -96,6 +111,8 @@ class ItemsExport implements FromCollection, WithMapping, WithEvents, ShouldAuto
 
     return $grouped;
 }
+
+
     public function map($item): array
     {
         // Check if this is a section header
@@ -108,34 +125,38 @@ class ItemsExport implements FromCollection, WithMapping, WithEvents, ShouldAuto
 
         // Check if this is a column header row
         if (isset($item->is_column_header) && $item->is_column_header) {
-           return [
-    'DATE IN',
-    'DEADLINE',
-    'ASSIGN BY',
-    'ASSIGN TO',
-    'COMPANY',
-    'PIC',
-    'TASK',        // ← was PRODUCT; moved up
-    'DEPARTMENT',  // ← was TASK; renamed from PRODUCT
-    'REMARKS',
-    'INTERNAL/CLIENT',
-    'STATUS',
-];
+            return [
+                'DATE IN',
+                'DEADLINE',
+                'ASSIGN BY',
+                'ASSIGN TO',
+                'COMPANY',
+                'PIC',
+                'TASK',
+                'DEPARTMENT',
+                'REMARKS',
+                'INTERNAL/CLIENT',
+                'STATUS',
+            ];
         }
 
-       return [
-    $item->date_in   ? Carbon::parse($item->date_in)->format('d/m/Y') : '',
-    $item->deadline  ? Carbon::parse($item->deadline)->format('d/m/Y') : '',
-    $item->assign_by_id ?? '',
-    $item->assign_to_id ?? '',
-    $item->company_id ?? '',
-    $item->pic_name ?? '',
-    $item->task ?? '',          // ← TASK comes first now
-    $item->product_id ?? '',    // ← Department value (from product_id)
-    $item->remarks ?? '',
-    $item->type_label ?? '',
-    $item->status ?? '',
-];
+        // 🔴 FIX: Handle both ID and legacy text columns
+        $assignBy = $item->assign_by_id ?? $item->assign_by ?? '';
+        $assignTo = $item->assign_to_id ?? $item->assign_to ?? '';
+
+        return [
+            $item->date_in ? Carbon::parse($item->date_in)->format('d/m/Y') : '',
+            $item->deadline ? Carbon::parse($item->deadline)->format('d/m/Y') : '',
+            $assignBy,
+            $assignTo,
+            $item->company_id ?? '',
+            $item->pic_name ?? '',
+            $item->task ?? '',
+            $item->product_id ?? '',
+            $item->remarks ?? '',
+            $item->type_label ?? '',
+            $item->status ?? '',
+        ];
     }
 
     public function registerEvents(): array

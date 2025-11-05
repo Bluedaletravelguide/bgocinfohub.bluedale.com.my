@@ -1943,6 +1943,7 @@ function openEditModal(id){
 }
 
 window.openEditModal = openEditModal;
+
 $(function(){
   try {
     // 🛡️ GUARD: Hide any stray modal backdrops on page load

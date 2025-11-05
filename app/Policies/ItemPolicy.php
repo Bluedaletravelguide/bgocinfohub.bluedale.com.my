@@ -44,6 +44,12 @@ class ItemPolicy
     // Ability for export (used by @can('export', Item::class))
     public function export(User $user): bool
     {
+        return $user !== null;
+    }
+
+    public function exportAny(User $user): bool
+    {
         return $user->hasRole('admin');
     }
+
 }

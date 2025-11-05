@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class Item extends Model
@@ -81,6 +82,35 @@ class Item extends Model
     }
 
     // 🔴 FUNCTION CLEAR QUERY CACHE ONLY (Ringan & Aman)
+
+    // Add near other query helpers
+    public function scopeOwnedBy($query, $userId, ?User $user = null)
+{
+    // Get user object if not provided
+    if (!$user && $userId) {
+        $user = User::find($userId);
+    }
+
+    if (!$user) {
+        return $query->whereRaw('1 = 0'); // Return empty if no user
+    }
+
+    $userIdStr = (string) $userId;
+    $userEmail = $user->email;
+    $userName = $user->name;
+
+    return $query->where(function ($q) use ($userIdStr, $userEmail, $userName) {
+        // Match by ID (as string)
+        $q->where('assign_to_id', $userIdStr)
+          ->orWhere('assign_by_id', $userIdStr)
+          // Match by email
+          ->orWhere('assign_to_id', 'LIKE', $userEmail)
+          ->orWhere('assign_by_id', 'LIKE', $userEmail)
+          // Match by name
+          ->orWhere('assign_to_id', 'LIKE', '%' . $userName . '%')
+          ->orWhere('assign_by_id', 'LIKE', '%' . $userName . '%');
+    });
+}
     protected static function clearQueryCache()
     {
         try {

@@ -10,6 +10,7 @@ use App\Exports\ItemsExport;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Validation\Rule;
+
 use Illuminate\Support\Facades\Artisan;
 
 use Illuminate\Support\Facades\Cache;
@@ -200,32 +201,32 @@ protected function baseQuery(array $filters)
 {
     $this->authorize('export', Item::class);
 
-    try {
-        $filters = method_exists($this, 'cleanFilters')
-            ? $this->cleanFilters($request)
-            : $request->only([
-                'date_in_from',
-                'deadline_from',
-                'assign_by_id',
-                'assign_to_id',
-                'company_id',
-                'pic_name',
-                'product_id',
-                'task',
-                'remarks',
-                'type_label',
-                'status',
-            ]);
+    $user = Auth::user();
+    $isAdmin = $user->role === 'admin';
 
+    // Get filters but REMOVE any assign_to/assign_by from user input
+    $filters = method_exists($this, 'cleanFilters')
+        ? $this->cleanFilters($request)
+        : $request->only([
+            'date_in_from', 'deadline_from', 'company_id',
+            'pic_name', 'product_id', 'task', 'remarks',
+            'type_label', 'status',
+        ]);
+
+    // 🔒 SECURITY: Force user ownership (admins can override)
+    if (!$isAdmin) {
+        unset($filters['assign_to_id']);
+        unset($filters['assign_by_id']);
+    }
+
+    try {
         $filename = 'Info_Hub_Status_' . now()->format('Ymd_His') . '.xlsx';
 
-        // ✅ SOLUSI: Download langsung tanpa temp file
         return Excel::download(
-            new ItemsExport($filters),
+            new ItemsExport($filters, $user, $isAdmin),
             $filename,
             \Maatwebsite\Excel\Excel::XLSX
         );
-
     } catch (\Throwable $e) {
         report($e);
         return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);

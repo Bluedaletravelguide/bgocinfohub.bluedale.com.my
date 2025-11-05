@@ -26,6 +26,7 @@ return array(
     'App\\Http\\Controllers\\ProductController' => $baseDir . '/app/Http/Controllers/ProductController.php',
     'App\\Http\\Controllers\\ProfileController' => $baseDir . '/app/Http/Controllers/ProfileController.php',
     'App\\Http\\Controllers\\StatusHistoryController' => $baseDir . '/app/Http/Controllers/StatusHistoryController.php',
+    'App\\Http\\Middleware\\TickScheduler' => $baseDir . '/app/Http/Middleware/TickScheduler.php',
     'App\\Http\\Requests\\Auth\\LoginRequest' => $baseDir . '/app/Http/Requests/Auth/LoginRequest.php',
     'App\\Http\\Requests\\ProfileUpdateRequest' => $baseDir . '/app/Http/Requests/ProfileUpdateRequest.php',
     'App\\Jobs\\SendDailyDigestJob' => $baseDir . '/app/Jobs/SendDailyDigestJob.php',
