@@ -40,6 +40,17 @@ Route::middleware(['auth','verified'])->group(function () {
         });
     });
 
+     Route::middleware(['role:admin'])->group(function () {
+        // Existing: Register user/admin
+        Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
+
+        // 🆕 NEW: View users (JSON)
+        Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+
+        // 🆕 NEW: Export users to Excel
+        Route::get('/admin/users/export', [AdminUserController::class, 'export'])->name('admin.users.export');
+    });
+
     Route::middleware(['role:admin'])->group(function () {
         // Endpoint untuk submit form register user/admin
         Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');

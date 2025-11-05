@@ -160,6 +160,83 @@
   width: 100%;
 }
 
+#modalViewUsers .modal-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+#usersTable tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Password cell styling */
+.password-cell {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+}
+
+.password-cell:hover {
+  background-color: #f3f4f6;
+}
+
+.password-cell::after {
+  content: '📋 Click to copy';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.password-cell:hover::after {
+  opacity: 1;
+}
+
+/* Role badges */
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-admin {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.role-user {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+/* Info button style */
+.btn-info {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: 1px solid #2563eb;
+}
+
+.btn-info:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
 /* === Date In (1) & Deadline (2) - Compact date columns === */
 .data-table thead th:nth-child(1),
 .data-table tbody td:nth-child(1),
@@ -389,6 +466,18 @@
             <span class="btn-bg"></span>
             <span class="btn-content">Register User/Admin</span>
             </button>
+        @endrole
+
+        @role('admin')
+        <button id="btnViewUsers" type="button" class="btn btn-info magnetic">
+        <span class="btn-bg"></span>
+        <span class="btn-content">
+            <svg xmlns="http://www.w3.org/2000/svg" class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:4px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            View Users
+        </span>
+        </button>
         @endrole
       </div>
 
@@ -667,6 +756,61 @@
         <button type="submit" class="btn btn-primary">Create</button>
       </div>
     </form>
+  </div>
+</div>
+@endrole
+
+@role('admin')
+<div id="modalViewUsers" class="modal-backdrop hidden">
+  <div class="modal-card glass-morphism" style="max-width: 90vw; width: 1200px;">
+    <div class="modal-header">
+      <h3>👥 All Users & Admins</h3>
+      <button type="button" class="modal-close" id="btnCloseViewUsers">×</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm text-neutral-600">
+          Total Users: <span id="userCount" class="font-semibold">0</span>
+        </div>
+        <button id="btnExportUsers" type="button" class="btn btn-success magnetic">
+          <span class="btn-bg"></span>
+          <span class="btn-content">
+            <svg xmlns="http://www.w3.org/2000/svg" class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:4px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export Users
+          </span>
+        </button>
+      </div>
+
+      <!-- Users Table -->
+      <div class="overflow-auto max-h-[60vh] border hairline rounded-xl">
+        <table class="min-w-full" id="usersTable">
+          <thead class="bg-neutral-50 text-neutral-700 text-sm sticky top-0">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold border-b hairline">ID</th>
+              <th class="px-4 py-3 text-left font-semibold border-b hairline">Name</th>
+              <th class="px-4 py-3 text-left font-semibold border-b hairline">Email</th>
+              <th class="px-4 py-3 text-left font-semibold border-b hairline">Password Hash</th>
+              <th class="px-4 py-3 text-left font-semibold border-b hairline">Role</th>
+              <th class="px-4 py-3 text-left font-semibold border-b hairline">Created At</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody" class="text-sm text-neutral-900">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+        <div id="usersEmpty" class="hidden py-16 text-center text-neutral-500">
+          No users found.
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="btnCancelViewUsers">Close</button>
+    </div>
   </div>
 </div>
 @endrole
@@ -1749,7 +1893,56 @@ document.addEventListener('click', function(e){
   }
 });
 
+// ========================================
+// 🌍 GLOBAL FUNCTIONS - MUST BE OUTSIDE $(function(){...})
+// ========================================
+let currentDetailData = null;
 
+function fillEditForm(d){
+  const f = document.getElementById('editForm');
+  const setInput = (el, val) => { if(el) el.value = (val ?? ''); };
+
+  setInput(f.elements['id'], d.id);
+  setInput(f.elements['date_in'], (d.date_in ?? '').slice(0,10));
+  setInput(f.elements['deadline'], (d.deadline ?? '').slice(0,10));
+  setInput(f.elements['assign_by_id'], d.assign_by_id);
+  setInput(f.elements['assign_to_id'], d.assign_to_id);
+  setInput(f.elements['type_label'], d.type_label);
+  setInput(f.elements['company_id'], d.company_id);
+  setInput(f.elements['task'], d.task);
+  setInput(f.elements['pic_name'], d.pic_name);
+  setInput(f.elements['product_id'], d.product_id);
+  setInput(f.elements['status'], d.status);
+  setInput(f.elements['remarks'], d.remarks);
+}
+
+function openEditModal(id){
+  const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  fetch(`{{ route('dashboard.items.editPayload', ['id' => '__ID__']) }}`.replace('__ID__', id), {
+    headers: { 'X-CSRF-TOKEN': CSRF }
+  })
+  .then(async (r) => {
+    if (r.status === 403) {
+      alert("You don't have permission to edit this item.");
+      throw new Error('403');
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  })
+  .then(({data}) => {
+    currentDetailData = data;
+    fillEditForm(data);
+
+    const editModal = document.getElementById('editModal');
+    editModal.classList.remove('hidden');
+    editModal.classList.add('active');
+    document.body.classList.add('modal-open');
+  })
+  .catch(() => {});
+}
+
+window.openEditModal = openEditModal;
 $(function(){
   try {
     // 🛡️ GUARD: Hide any stray modal backdrops on page load
@@ -2290,6 +2483,175 @@ window.getFilters = getFilters;
         closeModal('editModal');
       }
     });
+
+    $(function() {
+  const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+  // ===== VIEW USERS MODAL =====
+  function openUsersModal() {
+    document.getElementById('modalViewUsers')?.classList.remove('hidden');
+    loadUsersData();
+  }
+
+  function closeUsersModal() {
+    document.getElementById('modalViewUsers')?.classList.add('hidden');
+  }
+
+  // Load users data
+  async function loadUsersData() {
+    try {
+      const response = await fetch('{{ route("admin.users.index") }}', {
+        headers: {
+          'X-CSRF-TOKEN': CSRF,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const users = await response.json();
+      renderUsersTable(users);
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      alert('Failed to load users data. See console for details.');
+    }
+  }
+
+  // Render users table
+  function renderUsersTable(users) {
+    const tbody = document.getElementById('usersTableBody');
+    const empty = document.getElementById('usersEmpty');
+    const count = document.getElementById('userCount');
+
+    if (!tbody) return;
+
+    // Update count
+    if (count) count.textContent = users.length;
+
+    // Handle empty state
+    if (!users || users.length === 0) {
+      tbody.innerHTML = '';
+      empty?.classList.remove('hidden');
+      return;
+    }
+    empty?.classList.add('hidden');
+
+    // Format date
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
+
+    // Escape HTML
+    const esc = (str) => {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      }[m]));
+    };
+
+    // Build rows
+    const rows = users.map(user => {
+      const roleClass = user.role === 'admin' ? 'role-admin' : 'role-user';
+      const roleText = user.role === 'admin' ? 'Admin' : 'User';
+
+      return `
+        <tr class="hover:bg-neutral-50">
+          <td class="px-4 py-3 border-b hairline">${esc(user.id)}</td>
+          <td class="px-4 py-3 border-b hairline font-medium">${esc(user.name)}</td>
+          <td class="px-4 py-3 border-b hairline">${esc(user.email)}</td>
+          <td class="px-4 py-3 border-b hairline">
+            <div class="password-cell" data-password="${esc(user.password)}" title="Click to copy hash">
+              ${esc(user.password)}
+            </div>
+          </td>
+          <td class="px-4 py-3 border-b hairline">
+            <span class="role-badge ${roleClass}">${roleText}</span>
+          </td>
+          <td class="px-4 py-3 border-b hairline text-neutral-600">${formatDate(user.created_at)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.innerHTML = rows;
+
+    // Add copy-to-clipboard for password hashes
+    tbody.querySelectorAll('.password-cell').forEach(cell => {
+      cell.addEventListener('click', function() {
+        const hash = this.getAttribute('data-password');
+        if (!hash) return;
+
+        navigator.clipboard.writeText(hash).then(() => {
+          const original = this.textContent;
+          this.textContent = '✓ Copied!';
+          this.style.color = '#059669';
+          setTimeout(() => {
+            this.textContent = original;
+            this.style.color = '';
+          }, 2000);
+        }).catch(err => {
+          console.error('Copy failed:', err);
+          alert('Failed to copy to clipboard');
+        });
+      });
+    });
+  }
+
+  // Export users to Excel
+  async function exportUsers() {
+    try {
+      const response = await fetch('{{ route("admin.users.export") }}', {
+        headers: {
+          'X-CSRF-TOKEN': CSRF
+        }
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `users-${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Failed to export users. See console for details.');
+    }
+  }
+
+  // Event Listeners
+  $('#btnViewUsers').on('click', openUsersModal);
+  $('#btnCloseViewUsers, #btnCancelViewUsers').on('click', closeUsersModal);
+  $('#btnExportUsers').on('click', exportUsers);
+
+  // Close on backdrop click
+  $('#modalViewUsers').on('click', function(e) {
+    if (e.target.id === 'modalViewUsers') {
+      closeUsersModal();
+    }
+  });
+
+  // Close on Escape key
+  $(document).on('keydown', function(e) {
+    if (e.key === 'Escape' && $('#modalViewUsers').is(':visible')) {
+      closeUsersModal();
+    }
+  });
+});
 
 
 
