@@ -2361,13 +2361,73 @@ window.openEditModal = openEditModal;
 
     }
 
-    function sortNewestFirst(arr){
-  const key = r => (
-    r.created_at ? new Date(r.created_at).getTime()
-    : r.updated_at ? new Date(r.updated_at).getTime()
-    : (parseInt(r.id, 10) || 0)
-  );
-  arr.sort((a, b) => key(b) - key(a)); // newest first
+  function sortByDeadlineProximity(arr){
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Set to start of today for accurate comparison
+
+  arr.sort((a, b) => {
+    const deadlineA = a.deadline ? new Date(a.deadline) : null;
+    const deadlineB = b.deadline ? new Date(b.deadline) : null;
+
+    // Normalize to start of day for comparison
+    if (deadlineA) deadlineA.setHours(0, 0, 0, 0);
+    if (deadlineB) deadlineB.setHours(0, 0, 0, 0);
+
+    const timeA = deadlineA ? deadlineA.getTime() : null;
+    const timeB = deadlineB ? deadlineB.getTime() : null;
+    const nowTime = now.getTime();
+
+    // Check if tasks are closed/completed
+    const closedStates = ['completed', 'done', 'cancelled'];
+    const aIsClosed = closedStates.includes((a.status || '').toLowerCase());
+    const bIsClosed = closedStates.includes((b.status || '').toLowerCase());
+
+    // Check if overdue (deadline < today, and not closed)
+    const aIsOverdue = timeA && timeA < nowTime && !aIsClosed;
+    const bIsOverdue = timeB && timeB < nowTime && !bIsClosed;
+
+    // Check if upcoming (deadline >= today, and not closed)
+    const aIsUpcoming = timeA && timeA >= nowTime && !aIsClosed;
+    const bIsUpcoming = timeB && timeB >= nowTime && !bIsClosed;
+
+    // 1️⃣ UPCOMING tasks (deadline >= today) - SOONEST FIRST
+    if (aIsUpcoming && bIsUpcoming) {
+      return timeA - timeB; // Closest deadline first (besok, lusa, minggu depan, dst)
+    }
+    if (aIsUpcoming && !bIsUpcoming) return -1;
+    if (!aIsUpcoming && bIsUpcoming) return 1;
+
+    // 2️⃣ NO DEADLINE tasks (but not closed) - after upcoming
+    const aNoDeadline = !timeA && !aIsClosed;
+    const bNoDeadline = !timeB && !bIsClosed;
+
+    if (aNoDeadline && bNoDeadline) {
+      const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return createdB - createdA; // Newest first
+    }
+    if (aNoDeadline && !bNoDeadline) return -1;
+    if (!aNoDeadline && bNoDeadline) return 1;
+
+    // 3️⃣ OVERDUE tasks (deadline < today) - MOST OVERDUE FIRST, then at the END
+    if (aIsOverdue && bIsOverdue) {
+      return timeA - timeB; // Oldest overdue first (kemarin, kemarin lusa, minggu lalu, dst)
+    }
+    if (aIsOverdue && !bIsOverdue) return 1;  // ⚠️ CHANGED: Overdue goes to END
+    if (!aIsOverdue && bIsOverdue) return -1;
+
+    // 4️⃣ CLOSED tasks - very last
+    if (aIsClosed && bIsClosed) {
+      const updatedA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const updatedB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return updatedB - updatedA; // Most recently completed first
+    }
+    if (aIsClosed) return 1;
+    if (bIsClosed) return -1;
+
+    // 5️⃣ Fallback
+    return (parseInt(a.id, 10) || 0) - (parseInt(b.id, 10) || 0);
+  });
 }
 
 function getFilters(){
@@ -2401,7 +2461,7 @@ window.getFilters = getFilters;
     const status = (item.status || '').toLowerCase();
     return status !== 'completed';
   });
-  sortNewestFirst(allData);
+sortByDeadlineProximity(allData);
           if(resetWindow) windowStart = 0;
           renderWindow();
           if(calendar){
