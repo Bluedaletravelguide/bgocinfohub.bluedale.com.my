@@ -81,8 +81,10 @@ class SendItemNotificationJob implements ShouldQueue
                     continue;
                 }
 
-                if (method_exists($logger, 'shouldDebounce') &&
-                    $logger->shouldDebounce($userId, $item->id, 'mail', $this->event)) {
+                if (
+                    method_exists($logger, 'shouldDebounce') &&
+                    $logger->shouldDebounce($userId, $item->id, 'mail', $this->event)
+                ) {
                     $logger->logSkipped($userId, $item->id, 'mail', $this->event, ['reason' => 'debounced']);
                     continue;
                 }
@@ -114,7 +116,8 @@ class SendItemNotificationJob implements ShouldQueue
             if (class_exists($class)) {
                 return app($class);
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
         return null;
     }
 
@@ -124,7 +127,10 @@ class SendItemNotificationJob implements ShouldQueue
     protected function nullLogger(): object
     {
         return new class {
-            public function shouldDebounce(...$args): bool { return false; }
+            public function shouldDebounce(...$args): bool
+            {
+                return false;
+            }
             public function logSkipped(...$args): void {}
             public function logSent(...$args): void {}
         };

@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ItemDashboardController;
@@ -8,10 +9,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Response;
 
-Route::get('/', fn () => redirect()->route('login'));
+Route::get('/', fn() => redirect()->route('login'));
 
 // Auth routes should be accessible to guests
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 // ============================================
 // 🆕 WEB-CRON ROUTE (Scheduled Tasks & Queue)
@@ -43,43 +44,43 @@ Route::get('/__internal/schedule', function (Request $request) {
 // ============================================
 // AUTHENTICATED ROUTES
 // ============================================
-Route::middleware(['auth','verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/dashboard', [ItemDashboardController::class, 'index'])->name('dashboard');
 
     // Dashboard Items Routes
-Route::prefix('dashboard')->name('dashboard.')->group(function () {
-    Route::prefix('items')->name('items.')->group(function () {
-        Route::get('/',       [ItemDashboardController::class, 'index'])->name('index');
-        Route::get('/list',   [ItemDashboardController::class, 'list'])->name('list');
-        Route::get('/events', [ItemDashboardController::class, 'events'])->name('events');
-        Route::post('/',      [ItemDashboardController::class, 'store'])->name('store');
-        Route::patch('/{id}', [ItemDashboardController::class, 'update'])->whereNumber('id')->name('update');
-        Route::patch('/{id}/status', [ItemDashboardController::class, 'updateStatus'])->whereNumber('id')->name('status');
+    Route::prefix('dashboard')->name('dashboard.')->group(function () {
+        Route::prefix('items')->name('items.')->group(function () {
+            Route::get('/',       [ItemDashboardController::class, 'index'])->name('index');
+            Route::get('/list',   [ItemDashboardController::class, 'list'])->name('list');
+            Route::get('/events', [ItemDashboardController::class, 'events'])->name('events');
+            Route::post('/',      [ItemDashboardController::class, 'store'])->name('store');
+            Route::patch('/{id}', [ItemDashboardController::class, 'update'])->whereNumber('id')->name('update');
+            Route::patch('/{id}/status', [ItemDashboardController::class, 'updateStatus'])->whereNumber('id')->name('status');
 
-        // ✅ define this BEFORE the generic "/{id}" route
-        Route::get('/{id}/edit-payload', [ItemDashboardController::class, 'editPayload'])
-            ->whereNumber('id')
-            ->name('editPayload');
-
-        // generic show route — keep last so it doesn't swallow other routes
-        Route::get('/{id}', [ItemDashboardController::class, 'show'])
-            ->whereNumber('id')
-            ->name('show');
-
-        // export (open to any authenticated user; query enforces ownership)
-        Route::get('/export', [ItemDashboardController::class, 'export'])->name('export');
-
-        // admin-only destructive
-        Route::middleware('role:admin')->group(function () {
-            Route::delete('/{id}', [ItemDashboardController::class, 'destroy'])
+            // ✅ define this BEFORE the generic "/{id}" route
+            Route::get('/{id}/edit-payload', [ItemDashboardController::class, 'editPayload'])
                 ->whereNumber('id')
-                ->name('destroy');
+                ->name('editPayload');
+
+            // generic show route — keep last so it doesn't swallow other routes
+            Route::get('/{id}', [ItemDashboardController::class, 'show'])
+                ->whereNumber('id')
+                ->name('show');
+
+            // export (open to any authenticated user; query enforces ownership)
+            Route::get('/export', [ItemDashboardController::class, 'export'])->name('export');
+
+            // admin-only destructive
+            Route::middleware('role:admin')->group(function () {
+                Route::delete('/{id}', [ItemDashboardController::class, 'destroy'])
+                    ->whereNumber('id')
+                    ->name('destroy');
+            });
         });
     });
-});
 
 
     // ============================================

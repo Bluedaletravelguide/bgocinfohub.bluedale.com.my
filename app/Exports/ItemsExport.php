@@ -20,97 +20,97 @@ use Illuminate\Support\Facades\Schema;
 class ItemsExport implements FromCollection, WithMapping, WithEvents, ShouldAutoSize
 {
     protected $filters;
-protected $user;
-protected $isAdmin;
+    protected $user;
+    protected $isAdmin;
 
-public function __construct(array $filters = [], ?User $user = null, bool $isAdmin = false)
-{
-    $this->filters = $filters;
-    $this->user = $user ?? Auth::user();
-    $this->isAdmin = $isAdmin;
-}
-
-public function collection()
-{
-    $q = Item::query();
-
-    // 🔒 ENFORCE USER OWNERSHIP (kecuali admin)
-    if (!$this->isAdmin) {
-        // Ambil data user yang login
-        $userEmail = strtolower($this->user->email);
-        $userName = strtolower($this->user->name);
-
-        // Filter: cuma tampil data yang ada hubungannya dengan user ini
-        $q->where(function($subQuery) use ($userEmail, $userName) {
-            // Match by email (exact dan partial)
-            $subQuery->whereRaw('LOWER(assign_to_id) LIKE ?', ["%{$userEmail}%"])
-                     ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$userEmail}%"])
-                     // Match by name (exact dan partial)
-                     ->orWhereRaw('LOWER(assign_to_id) LIKE ?', ["%{$userName}%"])
-                     ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$userName}%"]);
-        });
-    }
-    // Kalau admin, tidak ada filter (ambil semua data)
-
-    // Apply date filters
-    if (!empty($this->filters['date_in_from'])) {
-        $q->whereDate('date_in', '>=', $this->filters['date_in_from']);
+    public function __construct(array $filters = [], ?User $user = null, bool $isAdmin = false)
+    {
+        $this->filters = $filters;
+        $this->user = $user ?? Auth::user();
+        $this->isAdmin = $isAdmin;
     }
 
-    // Apply other filters
-    if (!empty($this->filters['type_label'])) {
-        $q->where('type_label', $this->filters['type_label']);
-    }
-    if (!empty($this->filters['company_id'])) {
-        $q->where('company_id', $this->filters['company_id']);
-    }
-    if (!empty($this->filters['task'])) {
-        $q->where('task', 'like', '%' . $this->filters['task'] . '%');
-    }
-    if (!empty($this->filters['pic_name'])) {
-        $q->where('pic_name', 'like', '%' . $this->filters['pic_name'] . '%');
-    }
-    if (!empty($this->filters['product_id'])) {
-        $q->where('product_id', $this->filters['product_id']);
-    }
-    if (!empty($this->filters['status'])) {
-        $q->where('status', $this->filters['status']);
-    }
+    public function collection()
+    {
+        $q = Item::query();
 
-    // Get data
-    $items = $q->get();
+        // 🔒 ENFORCE USER OWNERSHIP (kecuali admin)
+        if (!$this->isAdmin) {
+            // Ambil data user yang login
+            $userEmail = strtolower($this->user->email);
+            $userName = strtolower($this->user->name);
 
-    // Define status order
-    $statusOrder = ['Expired', 'Pending', 'In Progress', 'Completed'];
+            // Filter: cuma tampil data yang ada hubungannya dengan user ini
+            $q->where(function ($subQuery) use ($userEmail, $userName) {
+                // Match by email (exact dan partial)
+                $subQuery->whereRaw('LOWER(assign_to_id) LIKE ?', ["%{$userEmail}%"])
+                    ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$userEmail}%"])
+                    // Match by name (exact dan partial)
+                    ->orWhereRaw('LOWER(assign_to_id) LIKE ?', ["%{$userName}%"])
+                    ->orWhereRaw('LOWER(assign_by_id) LIKE ?', ["%{$userName}%"]);
+            });
+        }
+        // Kalau admin, tidak ada filter (ambil semua data)
 
-    // Group and sort
-    $grouped = collect();
+        // Apply date filters
+        if (!empty($this->filters['date_in_from'])) {
+            $q->whereDate('date_in', '>=', $this->filters['date_in_from']);
+        }
 
-    foreach ($statusOrder as $status) {
-        $statusItems = $items->filter(function($item) use ($status) {
-            return strcasecmp($item->status, $status) === 0;
-        })->sortBy(function($item) {
-            return $item->deadline ? Carbon::parse($item->deadline)->timestamp : PHP_INT_MAX;
-        })->values();
+        // Apply other filters
+        if (!empty($this->filters['type_label'])) {
+            $q->where('type_label', $this->filters['type_label']);
+        }
+        if (!empty($this->filters['company_id'])) {
+            $q->where('company_id', $this->filters['company_id']);
+        }
+        if (!empty($this->filters['task'])) {
+            $q->where('task', 'like', '%' . $this->filters['task'] . '%');
+        }
+        if (!empty($this->filters['pic_name'])) {
+            $q->where('pic_name', 'like', '%' . $this->filters['pic_name'] . '%');
+        }
+        if (!empty($this->filters['product_id'])) {
+            $q->where('product_id', $this->filters['product_id']);
+        }
+        if (!empty($this->filters['status'])) {
+            $q->where('status', $this->filters['status']);
+        }
 
-        if ($statusItems->isNotEmpty()) {
-            $grouped->push((object)[
-                'is_section_header' => true,
-                'section_title' => strtoupper($status),
-            ]);
+        // Get data
+        $items = $q->get();
 
-            $grouped->push((object)[
-                'is_column_header' => true,
-            ]);
+        // Define status order
+        $statusOrder = ['Expired', 'Pending', 'In Progress', 'Completed'];
 
-            foreach ($statusItems as $item) {
-                $grouped->push($item);
+        // Group and sort
+        $grouped = collect();
+
+        foreach ($statusOrder as $status) {
+            $statusItems = $items->filter(function ($item) use ($status) {
+                return strcasecmp($item->status, $status) === 0;
+            })->sortBy(function ($item) {
+                return $item->deadline ? Carbon::parse($item->deadline)->timestamp : PHP_INT_MAX;
+            })->values();
+
+            if ($statusItems->isNotEmpty()) {
+                $grouped->push((object)[
+                    'is_section_header' => true,
+                    'section_title' => strtoupper($status),
+                ]);
+
+                $grouped->push((object)[
+                    'is_column_header' => true,
+                ]);
+
+                foreach ($statusItems as $item) {
+                    $grouped->push($item);
+                }
             }
         }
-    }
 
-    return $grouped;
-}
+        return $grouped;
+    }
 
 
     public function map($item): array
@@ -119,7 +119,16 @@ public function collection()
         if (isset($item->is_section_header) && $item->is_section_header) {
             return [
                 $item->section_title,
-                '', '', '', '', '', '', '', '', '', ''
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                ''
             ];
         }
 

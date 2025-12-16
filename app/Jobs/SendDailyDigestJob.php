@@ -37,11 +37,11 @@ class SendDailyDigestJob implements ShouldQueue
             ->take(5);
 
         // Fixed: Added ->toArray() to ensure it's countable before sortDesc()
-        $byAssignee = $items->groupBy(fn ($i) => $i->assign_to_id ?: 'Unassigned')
-            ->map(fn ($group) => $group->count())
+        $byAssignee = $items->groupBy(fn($i) => $i->assign_to_id ?: 'Unassigned')
+            ->map(fn($group) => $group->count())
             ->sortDesc();
 
-        $ge = $items->filter(fn ($i) => strtolower((string) $i->company_id) === 'ge')
+        $ge = $items->filter(fn($i) => strtolower((string) $i->company_id) === 'ge')
             ->sortBy('deadline');
 
         // Fixed: Added comparison operator

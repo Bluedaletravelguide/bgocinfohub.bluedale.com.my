@@ -115,7 +115,6 @@ class SendUserDigestJob implements ShouldQueue
                 'tomorrow'    => $dueTomorrow->count(),
                 'pending'     => $pending->count(),
             ]);
-
         } catch (\Throwable $e) {
             Log::error('[Digest][FAIL]', [
                 'user_id' => $this->userId,

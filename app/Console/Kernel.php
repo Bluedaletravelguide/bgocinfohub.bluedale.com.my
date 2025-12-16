@@ -10,21 +10,21 @@ class Kernel extends ConsoleKernel
     /**
      * Define the application's command schedule.
      */
-   protected function schedule(Schedule $schedule): void
-{
-    // Admin digest at 12:25 MYT
-    $schedule->command('items:send-deadline-reminders')
-             ->dailyAt('09:00')
-             ->timezone('Asia/Kuala_Lumpur');
+    protected function schedule(Schedule $schedule): void
+    {
+        // Admin digest at 12:25 MYT
+        $schedule->command('items:send-deadline-reminders')
+            ->dailyAt('09:00')
+            ->timezone('Asia/Kuala_Lumpur');
 
-    // User-specific digests at 12:25 MYT
-    $schedule->call(function () {
-        $users = \App\Models\User::whereNotNull('email')->get();
-        foreach ($users as $user) {
-            \App\Jobs\SendUserDigestJob::dispatch($user->id);
-        }
-    })->dailyAt('09:00')->timezone('Asia/Kuala_Lumpur');
-}
+        // User-specific digests at 12:25 MYT
+        $schedule->call(function () {
+            $users = \App\Models\User::whereNotNull('email')->get();
+            foreach ($users as $user) {
+                \App\Jobs\SendUserDigestJob::dispatch($user->id);
+            }
+        })->dailyAt('09:00')->timezone('Asia/Kuala_Lumpur');
+    }
 
 
 
@@ -33,7 +33,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

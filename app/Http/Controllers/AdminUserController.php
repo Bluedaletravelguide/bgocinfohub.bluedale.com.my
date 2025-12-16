@@ -22,10 +22,10 @@ class AdminUserController extends Controller
     {
         // 1) Validasi tegas biar ketahuan kalau gagal
         $data = $request->validate([
-            'name'     => ['required','string','max:255'],
-            'email'    => ['required','email','max:255','unique:users,email'],
-            'password' => ['required','string','min:8'],
-            'role'     => ['required','in:admin,user'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8'],
+            'role'     => ['required', 'in:admin,user'],
         ]);
 
         try {
@@ -43,7 +43,7 @@ class AdminUserController extends Controller
 
                 return redirect()
                     ->back()
-                    ->with('success', 'User created: '.$user->email);
+                    ->with('success', 'User created: ' . $user->email);
             });
         } catch (\Throwable $e) {
             Log::error('Admin create user failed', [
@@ -55,7 +55,7 @@ class AdminUserController extends Controller
             return redirect()
                 ->back()
                 ->withInput($request->except('password'))
-                ->withErrors(['general' => 'Create user failed: '.$e->getMessage()]);
+                ->withErrors(['general' => 'Create user failed: ' . $e->getMessage()]);
         }
     }
 
@@ -203,7 +203,6 @@ class AdminUserController extends Controller
             // Output to browser
             $writer->save('php://output');
             exit;
-
         } catch (\Throwable $e) {
             Log::error('Export users failed', [
                 'error' => $e->getMessage(),

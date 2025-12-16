@@ -24,7 +24,7 @@ class UserDigestMail extends Mailable
 
         $urgentCount = $expired + $dueToday;
 
-        $emoji = match(true) {
+        $emoji = match (true) {
             $expired > 0 => '🔴',
             $dueToday > 0 => '🟡',
             default => '✅'

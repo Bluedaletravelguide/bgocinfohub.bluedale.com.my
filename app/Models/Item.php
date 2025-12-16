@@ -15,9 +15,19 @@ class Item extends Model
     protected $table = 'items';
 
     protected $fillable = [
-        'date_in','deadline','assign_by_id','assign_to_id','type_label',
-        'company_id','task','pic_name','product_id','status','remarks',
-        'created_by','updated_by',
+        'date_in',
+        'deadline',
+        'assign_by_id',
+        'assign_to_id',
+        'type_label',
+        'company_id',
+        'task',
+        'pic_name',
+        'product_id',
+        'status',
+        'remarks',
+        'created_by',
+        'updated_by',
     ];
 
     /**
@@ -84,46 +94,46 @@ class Item extends Model
     // 🔴 FUNCTION CLEAR QUERY CACHE ONLY (Ringan & Aman)
 
     // Add near other query helpers
-   public function scopeOwnedBy($query, $userId = null, ?User $user = null)
-{
-    // Normalisasi user
-    $user = $user ?: ($userId ? User::find($userId) : Auth::user());
-    if (!$user) {
-        return $query->whereRaw('1=0'); // tidak ada user -> kosongkan
+    public function scopeOwnedBy($query, $userId = null, ?User $user = null)
+    {
+        // Normalisasi user
+        $user = $user ?: ($userId ? User::find($userId) : Auth::user());
+        if (!$user) {
+            return $query->whereRaw('1=0'); // tidak ada user -> kosongkan
+        }
+
+        $hasUserCols = Schema::hasColumn('items', 'assign_to_user_id')
+            && Schema::hasColumn('items', 'assign_by_user_id');
+
+        $uid   = (int) $user->id;
+        $uidS  = (string) $user->id;
+        $email = (string) ($user->email ?? '');
+        $name  = trim((string) ($user->name ?? ''));
+
+        return $query->where(function ($q) use ($hasUserCols, $uid, $uidS, $email, $name) {
+            // 1) Skema baru (FK ke users.id) — pakai jika kolom ada
+            if ($hasUserCols) {
+                $q->where('assign_to_user_id', $uid)
+                    ->orWhere('assign_by_user_id', $uid);
+            }
+
+            // 2) Fallback skema lama (varchar)
+            $q->orWhere('assign_to_id', $uidS)
+                ->orWhere('assign_by_id', $uidS);
+
+            if ($email !== '') {
+                // email cocok persis (tidak perlu LIKE)
+                $q->orWhere('assign_to_id', $email)
+                    ->orWhere('assign_by_id', $email);
+            }
+
+            if ($name !== '') {
+                // nama sering disimpan campur teks -> pakai LIKE
+                $q->orWhere('assign_to_id', 'LIKE', '%' . $name . '%')
+                    ->orWhere('assign_by_id', 'LIKE', '%' . $name . '%');
+            }
+        });
     }
-
-    $hasUserCols = Schema::hasColumn('items', 'assign_to_user_id')
-                  && Schema::hasColumn('items', 'assign_by_user_id');
-
-    $uid   = (int) $user->id;
-    $uidS  = (string) $user->id;
-    $email = (string) ($user->email ?? '');
-    $name  = trim((string) ($user->name ?? ''));
-
-    return $query->where(function ($q) use ($hasUserCols, $uid, $uidS, $email, $name) {
-        // 1) Skema baru (FK ke users.id) — pakai jika kolom ada
-        if ($hasUserCols) {
-            $q->where('assign_to_user_id', $uid)
-              ->orWhere('assign_by_user_id', $uid);
-        }
-
-        // 2) Fallback skema lama (varchar)
-        $q->orWhere('assign_to_id', $uidS)
-          ->orWhere('assign_by_id', $uidS);
-
-        if ($email !== '') {
-            // email cocok persis (tidak perlu LIKE)
-            $q->orWhere('assign_to_id', $email)
-              ->orWhere('assign_by_id', $email);
-        }
-
-        if ($name !== '') {
-            // nama sering disimpan campur teks -> pakai LIKE
-            $q->orWhere('assign_to_id', 'LIKE', '%'.$name.'%')
-              ->orWhere('assign_by_id', 'LIKE', '%'.$name.'%');
-        }
-    });
-}
     protected static function clearQueryCache()
     {
         try {
