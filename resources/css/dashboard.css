@@ -27,6 +27,8 @@ body {
     background: var(--paper);
     color: var(--ink);
     font-family: Inter, system-ui, -apple-system, sans-serif;
+    /* Increase base font size for better readability */
+    font-size: 17px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
@@ -36,16 +38,36 @@ body.modal-open {
     overflow: hidden !important;
 }
 
-/* ===== Borderless filters ===== */
+/* ===== Beautified filters ===== */
+.filter-panel {
+    padding: 1rem;
+    border-radius: 12px;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.9),
+        rgba(255, 255, 255, 0.85)
+    );
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+}
+
 .filter-grid .form-input,
 .filter-grid .form-select,
 .filter-grid .ts-control {
-    border: 0 !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
     box-shadow: none !important;
-    background: transparent !important;
-    border-radius: 0 !important;
-    padding-left: 0 !important; /* optional: keep text aligned */
-    padding-right: 0 !important; /* optional */
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    padding: 8px 10px !important;
+    color: var(--ink) !important;
+    font-size: 0.95rem !important;
 }
 
 .filter-grid .form-input:focus,
@@ -53,26 +75,80 @@ body.modal-open {
 .filter-grid .ts-wrapper.focus .ts-control,
 .filter-grid .ts-control:focus {
     outline: none !important;
-    box-shadow: none !important;
-    border: 0 !important;
+    border-color: rgba(34, 37, 91, 0.6) !important;
+    box-shadow: 0 6px 18px rgba(34, 37, 91, 0.06) !important;
 }
 
-/* remove hover lift/glow just for filters */
+/* remove hover lift just for filter controls */
 .filter-grid .form-input:hover,
 .filter-grid .form-select:hover,
 .filter-grid .ts-control:hover {
     transform: none !important;
-    box-shadow: none !important;
-    border: 0 !important;
 }
 
 /* date input quirks */
 .filter-grid input[type="date"] {
     -webkit-appearance: none;
     appearance: none;
-    background: transparent !important;
-    border: 0 !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
     box-shadow: none !important;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Form group + labels inside filter panel */
+.filter-grid .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.filter-panel .form-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+/* Make selects show a subtle native arrow and consistent padding */
+.filter-grid .form-select {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: linear-gradient(
+            45deg,
+            transparent 50%,
+            rgba(0, 0, 0, 0.35) 50%
+        ),
+        linear-gradient(135deg, rgba(0, 0, 0, 0.35) 50%, transparent 50%);
+    background-position: calc(100% - 18px) calc(1em + 2px),
+        calc(100% - 13px) calc(1em + 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 34px !important;
+}
+
+/* Filter action buttons styling */
+.btn-filter {
+    padding: 8px 12px !important;
+    height: 40px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Responsive: stack on very small screens */
+@media (max-width: 640px) {
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ============================================

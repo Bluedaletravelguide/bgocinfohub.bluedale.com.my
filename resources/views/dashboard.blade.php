@@ -396,6 +396,12 @@
         .data-table tbody tr:hover {
             background-color: #f8f9fa;
         }
+
+        /* Increase base font size for dashboard (slightly larger for readability) */
+        .dashboard-wrapper {
+            font-size: 1.06rem;
+            /* ~17px if browser default is 16px */
+        }
     </style>
 @endsection
 
@@ -598,9 +604,23 @@
                         <span class="section-icon">📋</span>
                         Tasks
                     </h2>
-                    <div class="table-meta">
+                    <div class="table-meta flex items-center gap-4">
                         <span class="pulse-dot"></span>
-                        Auto-rotates 7 rows every 8s •
+                        <label class="inline-flex items-center gap-2 text-sm text-neutral-600">
+                            <input type="checkbox" id="toggleAutoRotate" checked class="form-checkbox">
+                            <span>Auto-rotate 7 rows every 8s</span>
+                        </label>
+
+                        <div id="mainPagination" class="inline-flex items-center gap-2 ml-2" style="display:none;">
+                            <button id="mainPrev"
+                                class="px-3 py-1 rounded-lg border hairline hover:bg-neutral-50 disabled:opacity-50"
+                                disabled>Previous</button>
+                            <span id="mainPageInfo" class="text-sm text-neutral-600">Page 1 / 1</span>
+                            <button id="mainNext"
+                                class="px-3 py-1 rounded-lg border hairline hover:bg-neutral-50 disabled:opacity-50"
+                                disabled>Next</button>
+                        </div>
+
                     </div>
                 </div>
 
@@ -2244,6 +2264,7 @@
                 let calendar = null;
                 let currentDetailData = null;
                 let silentRefresh = false;
+                let autoRotateEnabled = true; // persisted in localStorage
 
                 // Magnetic button effect
                 document.querySelectorAll('.magnetic').forEach(btn => {
@@ -2479,7 +2500,8 @@
                             document.body.classList.add('modal-open');
                         })
                         .catch(() => {
-                            /* silent if unauthorized */ });
+                            /* silent if unauthorized */
+                        });
                 }
 
                 // publish to global immediately so Preview can call it
@@ -2542,7 +2564,7 @@
                     if (allData.length === 0) {
                         tbody.append(
                             `<tr><td colspan="12" style="padding:3rem 2rem; text-align:center; color:var(--muted);">No data</td></tr>`
-                            );
+                        );
                         updateTableCounter(0);
                         return;
                     }
@@ -2565,13 +2587,15 @@
                         });
                     });
                     updateTableCounter(slice.length);
+                    // update pagination UI for main table
+                    updateMainPagination();
                 }
 
                 function rotate() {
+                    if (!autoRotateEnabled) return;
                     if (hasAnyFilter() || allData.length <= WINDOW_SIZE) return;
                     windowStart = (windowStart + WINDOW_SIZE) % allData.length;
                     renderWindow();
-
                 }
 
                 function sortByDeadlineProximity(arr) {
@@ -2625,7 +2649,7 @@
                         // 3️⃣ OVERDUE tasks (deadline < today) - MOST OVERDUE FIRST, then at the END
                         if (aIsOverdue && bIsOverdue) {
                             return timeA -
-                            timeB; // Oldest overdue first (kemarin, kemarin lusa, minggu lalu, dst)
+                                timeB; // Oldest overdue first (kemarin, kemarin lusa, minggu lalu, dst)
                         }
                         if (aIsOverdue && !bIsOverdue) return 1; // ⚠️ CHANGED: Overdue goes to END
                         if (!aIsOverdue && bIsOverdue) return -1;
@@ -2691,8 +2715,54 @@
                 }
 
                 function startRotation() {
+                    if (!autoRotateEnabled) return;
                     if (rotateTimer) clearInterval(rotateTimer);
                     rotateTimer = setInterval(rotate, 8000);
+                }
+
+                function stopRotation() {
+                    if (rotateTimer) {
+                        clearInterval(rotateTimer);
+                        rotateTimer = null;
+                    }
+                }
+
+                function setAutoRotate(enabled) {
+                    autoRotateEnabled = !!enabled;
+                    try {
+                        localStorage.setItem('autoRotateEnabled', autoRotateEnabled ? '1' : '0');
+                    } catch (e) {}
+                    if (autoRotateEnabled) startRotation();
+                    else stopRotation();
+                    const cb = document.getElementById('toggleAutoRotate');
+                    if (cb) cb.checked = autoRotateEnabled;
+                }
+
+                function gotoPage(page) {
+                    const totalPages = Math.max(1, Math.ceil(allData.length / WINDOW_SIZE));
+                    const p = Math.max(1, Math.min(totalPages, page || 1));
+                    windowStart = (p - 1) * WINDOW_SIZE;
+                    renderWindow();
+                }
+
+                function updateMainPagination() {
+                    const wrap = document.getElementById('mainPagination');
+                    const info = document.getElementById('mainPageInfo');
+                    const prev = document.getElementById('mainPrev');
+                    const next = document.getElementById('mainNext');
+                    if (!wrap || !info || !prev || !next) return;
+
+                    if (hasAnyFilter() || allData.length <= WINDOW_SIZE) {
+                        wrap.style.display = 'none';
+                        return;
+                    }
+
+                    const totalPages = Math.max(1, Math.ceil(allData.length / WINDOW_SIZE));
+                    const currentPage = Math.floor(windowStart / WINDOW_SIZE) + 1;
+                    info.textContent = `Page ${currentPage} / ${totalPages}`;
+                    prev.disabled = (currentPage <= 1);
+                    next.disabled = (currentPage >= totalPages);
+                    wrap.style.display = 'inline-flex';
                 }
 
                 function startAutoRefresh() {
@@ -3237,8 +3307,32 @@
 
                 // BOOT SEQUENCE - Initialize everything on page load
                 initCalendar();
+
+                // Restore auto-rotate preference
+                try {
+                    const v = localStorage.getItem('autoRotateEnabled');
+                    if (v === '0') autoRotateEnabled = false;
+                } catch (e) {}
+
+                // Wire checkbox and pagination buttons
+                const cb = document.getElementById('toggleAutoRotate');
+                if (cb) {
+                    cb.checked = !!autoRotateEnabled;
+                    cb.addEventListener('change', (ev) => setAutoRotate(ev.target.checked));
+                }
+
+                document.getElementById('mainPrev')?.addEventListener('click', () => {
+                    const cur = Math.floor(windowStart / WINDOW_SIZE) + 1;
+                    gotoPage(cur - 1);
+                });
+                document.getElementById('mainNext')?.addEventListener('click', () => {
+                    const cur = Math.floor(windowStart / WINDOW_SIZE) + 1;
+                    gotoPage(cur + 1);
+                });
+
                 fetchData().then(() => {
-                    startRotation();
+                    // start auto behaviors
+                    if (autoRotateEnabled) startRotation();
                     startAutoRefresh();
                 }).catch(err => {
                     console.error('Boot error:', err);
